@@ -1,112 +1,170 @@
 # SolGuard Build Plan — Atomic Tasks
 
-## Phase 0: Scaffold (Tonight Feb 3)
+## Progress Summary
+**Phase 0-1:** 11/16 original tasks DONE (69%)
+**Next:** Fix bugs → Polish → WOW features → Demo → Submit
 
-### T1: Initialize Next.js project with TypeScript + Tailwind
-- Create Next.js 14 app with App Router, TypeScript, Tailwind CSS
-- Install: better-sqlite3, @solana/web3.js, axios, dotenv, oauth-1.0a
-- Create .env.local template
-- **Pass:** `npm run dev` starts without errors, Tailwind renders
+---
 
-### T2: SQLite database schema + seed script
-- Create db/schema.sql with tables: tokens, scans, alerts
-- tokens: mint, name, symbol, deployer, risk_score, lp_locked, mint_authority, holder_count, top_holder_pct, created_at, updated_at, status (RED/YELLOW/GREEN)
-- scans: id, token_mint, scan_type, result_json, scanned_at
-- alerts: id, token_mint, alert_type, tweet_id, posted_at
-- Create scripts/seed-db.js to initialize
-- **Pass:** Run seed script, tables exist, can INSERT + SELECT
+## ✅ COMPLETED (Feb 3 — Evening Session #1)
 
-### T3: RugCheck API client
-- Create src/lib/rugcheck.ts
-- Function: getTokenReport(mint) → { risk_score, risks[], deployer_history }
-- Function: getDeployerTokens(wallet) → previous tokens list
-- Handle rate limits and errors gracefully
-- **Pass:** Call with known token mint, get valid response logged
+### T1: Initialize Next.js + TypeScript + Tailwind ✅
+### T2: SQLite database schema + seed script ✅  
+### T3: RugCheck API client ✅
+### T4: Risk scoring engine (5-factor weighted) ✅
+### T5: Helius API client (deployer history + wallet assets) ✅
+### T7+T8: Dashboard UI + API routes ✅
+### T11: pump.fun WebSocket scanner ✅
+### T12: X API v2 alert poster (OAuth 1.0a) ✅
+### T13: Full pipeline E2E tested (BONK/JUP/WIF) ✅
+### T14: Roadmap page ✅
 
-## Phase 1: Risk Engine (Feb 4-5)
+---
 
-### T4: Risk score calculation engine
-- Create src/lib/risk-engine.ts
-- Input: RugCheck data + token metadata
-- Output: 0-100 score + RED/YELLOW/GREEN status + reasons array
-- Weights: deployer (40%), LP (25%), mint auth (15%), concentration (10%), age (10%)
-- **Pass:** Score 3 known tokens (1 rug, 1 legit, 1 mid), scores make sense
+## 🔧 Phase A: Bug Fixes (Feb 4 — FIRST PRIORITY)
+*Source: Claude Code brainstorm session Feb 3*
 
-### T5: Helius API client for wallet history
-- Create src/lib/helius.ts
-- Function: getWalletHistory(address) → recent transactions
-- Function: getTokenHolders(mint) → top holders with percentages
-- **Pass:** Query a known wallet, get transaction list
+### BF1: Fix null guard on mint authority override
+- **File:** `src/lib/risk-engine.ts:162`
+- **Bug:** When `report` is null, `report?.token.mintAuthority` returns `undefined`. `undefined !== null` = true, so override ALWAYS fires. GREEN tokens wrongly become YELLOW.
+- **Fix:** Change to `if (report && report.token.mintAuthority !== null && status === 'GREEN')`
+- **Pass:** Token with no report data can score GREEN
 
-### T6: Basic wallet graph (2-hop fund flow)
-- Create src/lib/wallet-graph.ts
-- Input: deployer address
-- Trace: who funded deployer → who funded those wallets
-- Output: { deployer, funders: [{ address, previousRugs, fundedBy }] }
-- **Pass:** Trace a known deployer, get 2-hop graph
+### BF2: Wire deployer history into scanner (eliminate dead code)
+- **File:** `src/lib/scanner.ts:45`
+- **Bug:** `calculateRisk(report, summary, 0, 0)` — deployer history (30% weight!) is hardcoded to 0
+- **Fix:** Call `getDeployerHistory()` from helius.ts, count TOKEN_MINT transactions, check if any previous tokens scored RED in our DB
+- **Pass:** Scanning a deployer with previous tokens shows correct deployer score
 
-## Phase 2: Dashboard (Feb 5-7)
+### BF3: Fix async setTimeout error swallowing
+- **Files:** `src/lib/scanner.ts:146-148, 168-170`
+- **Bug:** `setTimeout(async () => { await scanToken(mint); }, 5000)` — Promise rejection unhandled
+- **Fix:** Add `.catch(err => console.error('[SCANNER] Scan error:', err))`
+- **Pass:** Intentional error in scanToken doesn't crash process
 
-### T7: Dashboard layout + TokenTable component
-- Create main page (src/app/page.tsx) with header, stats bar, token table
-- TokenTable: sortable columns (name, score, status, deployer, time)
-- RiskBadge: color-coded RED/YELLOW/GREEN pill
-- Auto-refresh every 30 seconds
-- **Pass:** Page renders with mock data, sorting works, colors correct
+### BF4: Fix recursive startScanner interval leak
+- **File:** `src/lib/scanner.ts:204-208`
+- **Bug:** Recursive `startScanner()` never clears previous `setInterval`, stacking health checks
+- **Fix:** Store intervalId, `clearInterval(intervalId)` before restart
+- **Pass:** After reconnection, only 1 health-check interval runs
 
-### T8: API routes for token data
-- GET /api/tokens → paginated list from SQLite
-- GET /api/tokens/[mint] → single token detail + risk breakdown
-- **Pass:** curl returns JSON with correct structure
+### BF5: Fix deployer score scale inconsistency
+- **File:** `src/lib/risk-engine.ts:50`
+- **Bug:** `(1 - rugRate) * 30` caps at 30, but scale is 0-100. Clean deployers score WORSE than unknowns
+- **Fix:** Change multiplier from `30` to `100`
+- **Pass:** Deployer with 1 rug in 100 tokens scores > 40 (unknown deployer score)
 
-### T9: Token detail view
-- Click token row → expanded view with risk breakdown
-- Show: risk reasons, deployer history, LP info, holder distribution
-- Show wallet graph (simple tree view for v1)
-- **Pass:** Click a token, detail panel opens with all data
+### BF6: Align AGENTS.md weights with risk-engine.ts
+- **Bug:** AGENTS.md says deployer=40% but code has deployer=30%. Add token age factor (10%).
+- **Fix:** Update weights: deployer 40%, LP 25%, authority 15%, concentration 10%, age 10%
+- **Token age source:** Helius Enhanced Transactions API returns `timestamp` on TOKEN_MINT txs — reuse getDeployerHistory() data
+- **Age scoring:** <1h = 0, <24h = 30, <7d = 60, >30d = 90, >1y = 100
+- **Pass:** Weights sum to 1.0, old tokens score higher on age factor
 
-### T10: Real-time updates with polling
-- Dashboard polls /api/tokens every 30s
-- New tokens appear at top with highlight animation
-- Stats bar: total tokens tracked, avg risk score, # RED flags today
-- **Pass:** Add token to DB, it appears on dashboard within 30s
+---
 
-## Phase 3: Scanner + Alerts (Feb 7-9)
+## 🎨 Phase B: Polish + Essential UI (Feb 4-5)
 
-### T11: pump.fun WebSocket listener
-- Create src/lib/scanner.ts
-- Connect to Solana WebSocket, subscribe to pump.fun program logs
-- On new token: parse mint, name, symbol, deployer
-- Save to SQLite + trigger risk scoring
-- **Pass:** Run listener, new pump.fun tokens appear in DB
+### T9: Token detail view (expanded)
+- Click token row → show full risk breakdown with visual gauge
+- Show: risk factor breakdown (5 bars), deployer info, risk reasons, RugCheck link
+- **Pass:** Click any token, detail panel shows breakdown
 
-### T12: X API v2 alert poster
-- Create src/lib/twitter.ts (OAuth 1.0a, same pattern as aria-onchain-analyst)
-- Function: postAlert(token) → tweet with risk info
-- Format: "[SolGuard] ⚠️ HIGH RISK: $TICKER\nScore: X/100\nDeployer rugged 5 tokens previously\nLP: unlocked"
-- Only post for RED tokens (score < 30)
-- **Pass:** Post test alert, get tweet ID back
+### T10: Real-time polling improvements
+- Highlight new tokens with animation when they appear
+- Show "last updated" timestamp
+- **Pass:** Add token to DB, appears with highlight within 30s
 
-### T13: Scanner → Risk Engine → DB → Alert pipeline
-- Wire everything: new token detected → score → save → alert if RED
-- Run as background process alongside Next.js
-- **Pass:** Deploy a test token on devnet, full pipeline fires
+### T15: Filter/Sort bar
+- Add filter pills: All | 🔴 RED | 🟡 YELLOW | 🟢 GREEN
+- Sort dropdown: Newest | Lowest Score | Highest Score
+- **Pass:** Filtering works, sort works, URL params preserved
 
-## Phase 4: Polish (Feb 9-12)
+### T15b: Mobile responsive
+- Dashboard works on mobile viewport
+- Table becomes card layout on small screens
+- **Pass:** Looks good on 375px width
 
-### T14: Roadmap tab
-- Create src/app/roadmap/page.tsx
-- List future features: wallet graph v2, community scoring, honeypot integration, cross-chain, API for third parties
-- **Pass:** /roadmap renders with feature list
+---
 
-### T15: Mobile responsive + design polish
-- Dashboard works on mobile
-- Dark theme, clean typography
-- SolGuard logo/branding
-- **Pass:** Looks good on mobile viewport
+## 🚀 Phase C: WOW Features (Feb 5-8)
+*Source: Claude Code brainstorm session + X research*
+
+### WOW1: "Scan Any Token" Search Bar
+- Prominent search bar at top of dashboard
+- Paste Solana mint address → instant risk breakdown
+- Loading skeleton → animated result card
+- Uses existing POST /api/scan endpoint
+- **Why:** Makes demo INTERACTIVE for judges. They paste a token, they get an answer.
+- **Pass:** Paste BONK mint → see risk score appear with animation
+
+### WOW2: Risk Distribution Donut Chart
+- Replace/augment stats bar with recharts donut chart
+- Center: total count. Ring: RED/YELLOW/GREEN proportions with matching colors
+- **Why:** Single visual > reading 3 numbers. Immediately communicates ecosystem health.
+- **Pass:** Chart renders with correct proportions
+
+### WOW3: Serial Rugger Profile Page (`/deployer/[address]`)
+- Aggregate all tokens by same deployer wallet
+- Show: rug count, avg risk score, timeline of launches
+- Badge: "Serial Rugger" if 3+ tokens scored RED
+- Link from token table deployer column
+- **Why:** Investigative layer — no other tool shows deployer's full rap sheet
+- **Pass:** Navigate to deployer page, see all their tokens listed
+
+### WOW4: Deployer Fund-Flow Graph
+- Visualize where deployer's funds came from / where rug proceeds went
+- Use react-force-graph-2d or d3-force for force-directed graph
+- 2-level: source wallets → deployer → drain wallets
+- **Why:** Visualization = demo GOLD. Money flowing from 5 rugs to same wallet = instant "aha"
+- **Pass:** Graph renders with nodes and edges for a known deployer
+
+### WOW5: Telegram Bot Alerts
+- Push RED alerts to Telegram via Bot API
+- Users enter chat ID on dashboard → get instant DMs for dangerous tokens
+- ~30 lines on top of existing maybeAlert()
+- **Why:** Shows distribution beyond single dashboard. "Protects you wherever you are."
+- **Pass:** RED token triggers Telegram message
+
+---
+
+## 🏁 Phase D: Submit (Feb 10-12)
+
+### T6: Wallet graph (2-hop) — feeds into WOW4
+- Already have helius.ts getDeployerHistory()
+- Trace: deployer → incoming SOL transfers → source wallets → check if sources deployed RED tokens
+- **Pass:** Known deployer returns funding graph
 
 ### T16: Demo video + Colosseum submission
-- Record dashboard in action
-- Show real-time token detection + risk scoring
-- Submit to Colosseum before Feb 12 deadline
-- **Pass:** Video uploaded, project submitted
+- Record dashboard with live scanning
+- Show: search bar, real-time detection, deployer profile, fund-flow graph
+- Narrate with @AriaLinkwell voice
+- Submit to Colosseum before Feb 12
+- **Pass:** Video uploaded, project registered, submission confirmed
+
+---
+
+## 📊 Daily Schedule
+
+### Each Evening Build Session:
+1. Check BUILD-PLAN.md — what's next?
+2. Fix bugs first (Phase A before Phase C)
+3. Build 2-4 tasks per session
+4. Git commit after each task
+5. Push to GitHub at end of session
+
+### Daily Research + Brainstorm (Scheduled Cron):
+1. Research X/web for new scam detection ideas
+2. Run Claude Code in plan mode to analyze codebase
+3. Save findings to memory/solguard-brainstorm-YYYY-MM-DD.md
+4. Identify new bugs, improvements, ideas
+5. Update BUILD-PLAN.md if needed
+
+---
+
+## Research References
+- `memory/solguard-brainstorm-feb3.md` — First brainstorm: 5 bugs, 5 WOW features, 3 dashboard upgrades
+- `memory/solguard-research.md` — Competition analysis, zachxbt/samczsun gap, 80/20 Pareto
+- BYDFi MoonX: Exchange-level honeypot detection (GoPlus, QuickIntel) — good UX reference
+- DeepSnitch/SnitchScan: Whale tracking + real-time alerts across chains — concept reference  
+- Zealynx: 45-check Solana security checklist from 50+ audits — risk factor reference
