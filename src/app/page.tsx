@@ -1,65 +1,200 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import type { Token, TokenStats } from '@/types';
+
+function RiskBadge({ status, score }: { status: string; score: number }) {
+  const colors = {
+    RED: 'bg-red-500/20 text-red-400 border-red-500/30',
+    YELLOW: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+    GREEN: 'bg-green-500/20 text-green-400 border-green-500/30',
+  };
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${colors[status as keyof typeof colors] || colors.YELLOW}`}>
+      <span className={`w-2 h-2 rounded-full ${status === 'RED' ? 'bg-red-500 animate-pulse' : status === 'GREEN' ? 'bg-green-500' : 'bg-yellow-500'}`} />
+      {score}/100
+    </span>
+  );
+}
+
+function StatsBar({ stats }: { stats: TokenStats | null }) {
+  if (!stats) return null;
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="text-2xl font-bold text-white">{stats.total}</div>
+        <div className="text-xs text-gray-500 mt-1">Tokens Tracked</div>
+      </div>
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="text-2xl font-bold text-red-400">{stats.red}</div>
+        <div className="text-xs text-gray-500 mt-1">High Risk</div>
+      </div>
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="text-2xl font-bold text-yellow-400">{stats.yellow}</div>
+        <div className="text-xs text-gray-500 mt-1">Medium Risk</div>
+      </div>
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="text-2xl font-bold text-green-400">{stats.green}</div>
+        <div className="text-xs text-gray-500 mt-1">Low Risk</div>
+      </div>
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="text-2xl font-bold text-blue-400">{stats.avgScore}</div>
+        <div className="text-xs text-gray-500 mt-1">Avg Score</div>
+      </div>
+    </div>
+  );
+}
+
+function TokenRow({ token }: { token: Token }) {
+  const [expanded, setExpanded] = useState(false);
+  const reasons = JSON.parse(token.risk_reasons || '[]');
+  const shortMint = `${token.mint.slice(0, 6)}...${token.mint.slice(-4)}`;
+  const shortDeployer = `${token.deployer.slice(0, 6)}...${token.deployer.slice(-4)}`;
+
+  return (
+    <>
+      <tr
+        className="border-b border-gray-800/50 hover:bg-gray-900/50 cursor-pointer transition"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <td className="px-4 py-3">
+          <RiskBadge status={token.status} score={token.risk_score} />
+        </td>
+        <td className="px-4 py-3">
+          <div className="font-medium text-white">{token.name || 'Unknown'}</div>
+          <div className="text-xs text-gray-500">${token.symbol || '???'}</div>
+        </td>
+        <td className="px-4 py-3 font-mono text-xs text-gray-400">{shortMint}</td>
+        <td className="px-4 py-3 font-mono text-xs text-gray-400">{shortDeployer}</td>
+        <td className="px-4 py-3 text-xs text-gray-400">
+          {token.lp_locked ? '✅' : '❌'}
+        </td>
+        <td className="px-4 py-3 text-xs text-gray-400">
+          {token.mint_authority_revoked ? '✅' : '⚠️'}
+        </td>
+        <td className="px-4 py-3 text-xs text-gray-500">{token.source}</td>
+        <td className="px-4 py-3 text-xs text-gray-500">
+          {new Date(token.created_at).toLocaleTimeString()}
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="bg-gray-900/30">
+          <td colSpan={8} className="px-6 py-4">
+            <div className="text-sm font-medium text-gray-300 mb-2">Risk Factors:</div>
+            <ul className="space-y-1">
+              {reasons.length > 0 ? reasons.map((r: string, i: number) => (
+                <li key={i} className="text-xs text-gray-400 flex items-start gap-2">
+                  <span className="text-red-400 mt-0.5">●</span> {r}
+                </li>
+              )) : (
+                <li className="text-xs text-gray-500">No specific risk factors detected</li>
+              )}
+            </ul>
+            <div className="mt-3 flex gap-3">
+              <a
+                href={`https://rugcheck.xyz/tokens/${token.mint}`}
+                target="_blank"
+                className="text-xs text-blue-400 hover:text-blue-300"
+              >
+                View on RugCheck →
+              </a>
+              <a
+                href={`https://solscan.io/token/${token.mint}`}
+                target="_blank"
+                className="text-xs text-blue-400 hover:text-blue-300"
+              >
+                View on Solscan →
+              </a>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+export default function Dashboard() {
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [stats, setStats] = useState<TokenStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<string>('');
+
+  const fetchData = async () => {
+    try {
+      const res = await fetch('/api/tokens');
+      const data = await res.json();
+      setTokens(data.tokens || []);
+      setStats(data.stats || null);
+      setLastUpdate(new Date().toLocaleTimeString());
+    } catch (err) {
+      console.error('Failed to fetch:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 30000); // refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div>
+      {/* Hero */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white mb-2">
+          Live Token Risk Monitor
+        </h1>
+        <p className="text-gray-400">
+          Real-time rug pull detection for Solana. Tokens are scanned and scored automatically.
+        </p>
+        {lastUpdate && (
+          <p className="text-xs text-gray-600 mt-2">Last updated: {lastUpdate} · Auto-refreshes every 30s</p>
+        )}
+      </div>
+
+      {/* Stats */}
+      <StatsBar stats={stats} />
+
+      {/* Token Table */}
+      <div className="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
+                <th className="px-4 py-3 text-left">Risk</th>
+                <th className="px-4 py-3 text-left">Token</th>
+                <th className="px-4 py-3 text-left">Mint</th>
+                <th className="px-4 py-3 text-left">Deployer</th>
+                <th className="px-4 py-3 text-left">LP</th>
+                <th className="px-4 py-3 text-left">Mint Auth</th>
+                <th className="px-4 py-3 text-left">Source</th>
+                <th className="px-4 py-3 text-left">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
+                    Loading tokens...
+                  </td>
+                </tr>
+              ) : tokens.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
+                    No tokens tracked yet. Scanner will populate this automatically.
+                  </td>
+                </tr>
+              ) : (
+                tokens.map((token) => (
+                  <TokenRow key={token.mint} token={token} />
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
