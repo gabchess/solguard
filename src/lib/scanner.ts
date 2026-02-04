@@ -1,7 +1,8 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getTokenSummary, getTokenReport } from './rugcheck';
 import { calculateRisk } from './risk-engine';
-import { insertToken, insertScan, getTokenByMint } from './db';
+import { insertToken, insertScan, getTokenByMint, getDb } from './db';
+import { getDeployerHistory } from './helius';
 
 const PUMP_FUN_PROGRAM = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P';
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY || '';
@@ -9,6 +10,7 @@ const WS_URL = `wss://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
 const RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
 
 let reconnectAttempts = 0;
+let healthCheckInterval: ReturnType<typeof setInterval> | null = null;
 const MAX_RECONNECT_DELAY = 60000; // 60s max
 
 /**
@@ -41,13 +43,46 @@ export async function scanToken(mint: string): Promise<{
       return null;
     }
 
-    // Run risk engine
-    const risk = calculateRisk(report, summary, 0, 0);
+    // Get deployer history for risk scoring
+    const deployer = report?.creator || 'unknown';
+    let deployerPreviousRugs = 0;
+    let deployerTotalTokens = 0;
+    let tokenAgeSec = 0;
+
+    if (deployer !== 'unknown') {
+      try {
+        const history = await getDeployerHistory(deployer);
+        // Count TOKEN_MINT transactions (each = a token this deployer created)
+        const mintTxs = history.filter(tx => tx.type === 'TOKEN_MINT');
+        deployerTotalTokens = mintTxs.length;
+
+        // Check how many of deployer's previous tokens scored RED in our DB
+        const db = getDb();
+        const redCount = db.prepare(
+          "SELECT COUNT(*) as count FROM tokens WHERE deployer = ? AND status = 'RED' AND mint != ?"
+        ).get(deployer, mint) as { count: number };
+        deployerPreviousRugs = redCount.count;
+
+        // Get token age from the earliest mint tx for THIS token
+        const thisMintTx = mintTxs.find(tx =>
+          tx.tokenTransfers?.some(t => t.mint === mint)
+        );
+        if (thisMintTx) {
+          tokenAgeSec = Math.floor(Date.now() / 1000) - thisMintTx.timestamp;
+        }
+
+        console.log(`[SCANNER] Deployer ${deployer.slice(0, 8)}...: ${deployerTotalTokens} tokens, ${deployerPreviousRugs} rugs`);
+      } catch (err) {
+        console.error(`[SCANNER] Deployer history error:`, err);
+      }
+    }
+
+    // Run risk engine with real deployer data
+    const risk = calculateRisk(report, summary, deployerPreviousRugs, deployerTotalTokens, tokenAgeSec);
 
     // Extract token info
     const name = report?.fileMeta?.name || report?.tokenMeta?.name || 'Unknown';
     const symbol = report?.fileMeta?.symbol || report?.tokenMeta?.symbol || '???';
-    const deployer = report?.creator || 'unknown';
 
     // Save to database
     insertToken({
@@ -143,8 +178,8 @@ export function startScanner(): void {
         
         if (mint) {
           // Rate limit: wait a bit for RugCheck to have data
-          setTimeout(async () => {
-            await scanToken(mint);
+          setTimeout(() => {
+            scanToken(mint).catch(err => console.error('[SCANNER] Scan error:', err));
           }, 5000);
         } else {
           // Fallback: fetch the transaction to get accounts
@@ -165,8 +200,8 @@ export function startScanner(): void {
                 .map(b => b.mint);
               
               for (const newMint of newMints) {
-                setTimeout(async () => {
-                  await scanToken(newMint);
+                setTimeout(() => {
+                  scanToken(newMint).catch(err => console.error('[SCANNER] Scan error:', err));
                 }, 5000);
               }
             }
@@ -189,9 +224,14 @@ export function startScanner(): void {
     reconnectAttempts = 0;
   });
 
+  // Clear any previous health check interval to prevent stacking
+  if (healthCheckInterval) {
+    clearInterval(healthCheckInterval);
+  }
+
   // Reconnection logic (handled by @solana/web3.js internally,
   // but we add a heartbeat check)
-  setInterval(async () => {
+  healthCheckInterval = setInterval(async () => {
     try {
       const slot = await connection.getSlot();
       console.log(`[SCANNER] Health check OK — slot: ${slot}`);
@@ -203,6 +243,10 @@ export function startScanner(): void {
       
       if (reconnectAttempts > 10) {
         console.error('[SCANNER] Too many reconnection attempts — restarting scanner');
+        if (healthCheckInterval) {
+          clearInterval(healthCheckInterval);
+          healthCheckInterval = null;
+        }
         try { connection.removeOnLogsListener(subscriptionId); } catch {}
         setTimeout(() => startScanner(), delay);
         return;

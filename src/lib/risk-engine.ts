@@ -9,17 +9,18 @@ export interface RiskAssessment {
     liquidity: number;     // 0-100
     authority: number;      // 0-100
     concentration: number;  // 0-100
-    rugcheck: number;       // 0-100
+    age: number;            // 0-100
   };
 }
 
 // Weights for each factor (must sum to 1.0)
+// Aligned with AGENTS.md specification
 const WEIGHTS = {
-  deployer: 0.30,
+  deployer: 0.40,
   liquidity: 0.25,
-  authority: 0.20,
-  concentration: 0.15,
-  rugcheck: 0.10,
+  authority: 0.15,
+  concentration: 0.10,
+  age: 0.10,
 };
 
 /**
@@ -32,6 +33,7 @@ export function calculateRisk(
   summary: RugCheckSummary | null,
   deployerPreviousRugs: number = 0,
   deployerTotalTokens: number = 0,
+  tokenAgeSec: number = 0,
 ): RiskAssessment {
   const reasons: string[] = [];
   const breakdown = {
@@ -39,18 +41,18 @@ export function calculateRisk(
     liquidity: 50,
     authority: 50,
     concentration: 50,
-    rugcheck: 50,
+    age: 50,
   };
 
-  // --- DEPLOYER SCORE (30%) ---
+  // --- DEPLOYER SCORE (40%) ---
   if (deployerPreviousRugs > 0) {
     const rugRate = deployerTotalTokens > 0 
       ? deployerPreviousRugs / deployerTotalTokens 
       : 1;
-    breakdown.deployer = Math.max(0, Math.round((1 - rugRate) * 30));
+    breakdown.deployer = Math.max(0, Math.round((1 - rugRate) * 100));
     reasons.push(`Deployer rugged ${deployerPreviousRugs} of ${deployerTotalTokens} previous tokens`);
   } else if (deployerTotalTokens === 0) {
-    breakdown.deployer = 40; // New deployer — unknown, slightly risky
+    breakdown.deployer = 40; // New deployer, unknown, slightly risky
     reasons.push('New deployer with no token history');
   } else {
     breakdown.deployer = Math.min(100, 60 + deployerTotalTokens * 5);
@@ -118,19 +120,40 @@ export function calculateRisk(
     }
   }
 
-  // --- RUGCHECK SCORE (10%) ---
-  if (summary) {
-    // RugCheck score_normalised: 0 = safest, higher = riskier
-    // We invert: 0 risk → 100 our score, high risk → low our score
-    const normalized = summary.score_normalised || 0;
-    breakdown.rugcheck = Math.max(0, 100 - normalized * 10);
-    
-    // Add high-severity risks as reasons
-    if (report?.risks) {
-      report.risks
-        .filter(r => r.level === 'danger')
-        .forEach(r => reasons.push(`[DANGER] ${r.name}: ${r.description}`));
+  // --- TOKEN AGE SCORE (10%) ---
+  // Older tokens are generally safer (survived longer without rugging)
+  const ONE_HOUR = 3600;
+  const ONE_DAY = 86400;
+  const ONE_WEEK = 604800;
+  const ONE_MONTH = 2592000;
+  const ONE_YEAR = 31536000;
+
+  if (tokenAgeSec > 0) {
+    if (tokenAgeSec < ONE_HOUR) {
+      breakdown.age = 0;
+      reasons.push('Token is less than 1 hour old');
+    } else if (tokenAgeSec < ONE_DAY) {
+      breakdown.age = 30;
+      reasons.push('Token is less than 24 hours old');
+    } else if (tokenAgeSec < ONE_WEEK) {
+      breakdown.age = 60;
+    } else if (tokenAgeSec < ONE_MONTH) {
+      breakdown.age = 80;
+    } else if (tokenAgeSec < ONE_YEAR) {
+      breakdown.age = 90;
+    } else {
+      breakdown.age = 100;
     }
+  } else {
+    breakdown.age = 20; // Unknown age, treat as risky
+    reasons.push('Could not determine token age');
+  }
+
+  // Add RugCheck danger signals as reasons (not scored separately, already covered by other factors)
+  if (report?.risks) {
+    report.risks
+      .filter(r => r.level === 'danger')
+      .forEach(r => reasons.push(`[DANGER] ${r.name}: ${r.description}`));
   }
 
   // --- FINAL WEIGHTED SCORE ---
@@ -139,7 +162,7 @@ export function calculateRisk(
     breakdown.liquidity * WEIGHTS.liquidity +
     breakdown.authority * WEIGHTS.authority +
     breakdown.concentration * WEIGHTS.concentration +
-    breakdown.rugcheck * WEIGHTS.rugcheck
+    breakdown.age * WEIGHTS.age
   );
 
   // Determine status

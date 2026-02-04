@@ -42,7 +42,7 @@ describe('calculateRisk', () => {
       lpLockedPct: 95,
     };
 
-    const result = calculateRisk(report, summary, 0, 5);
+    const result = calculateRisk(report, summary, 0, 5, 2592000); // 30 days old
 
     expect(result.score).toBeGreaterThan(60);
     expect(result.status).toBe('GREEN');
