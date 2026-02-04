@@ -158,8 +158,8 @@ export function calculateRisk(
     reasons.push('Score capped: deployer has previous rug history');
   }
 
-  // Override: if mint authority active, cap at YELLOW  
-  if (report?.token.mintAuthority !== null && status === 'GREEN') {
+  // Override: if mint authority active, cap at YELLOW
+  if (report && report.token.mintAuthority !== null && status === "GREEN") {
     status = 'YELLOW';
   }
 

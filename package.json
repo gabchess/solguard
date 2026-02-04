@@ -1,13 +1,4 @@
 {
-  "name": "solguard",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
   "dependencies": {
     "@solana/web3.js": "^1.98.4",
     "axios": "^1.13.4",
@@ -25,7 +16,19 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "jest": "^30.2.0",
     "tailwindcss": "^4",
+    "ts-jest": "^29.4.6",
     "typescript": "^5"
-  }
+  },
+  "name": "solguard",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "lint": "eslint",
+    "start": "next start",
+    "test": "jest"
+  },
+  "version": "0.1.0"
 }
