@@ -22,6 +22,13 @@ export function getDb(): Database.Database {
     // Run schema on first load
     const schema = fs.readFileSync(SCHEMA_PATH, 'utf-8');
     db.exec(schema);
+
+    // Migration: add risk_breakdown column if missing
+    try {
+      db.exec("ALTER TABLE tokens ADD COLUMN risk_breakdown TEXT DEFAULT '{}'");
+    } catch {
+      // Column already exists
+    }
   }
   return db;
 }
@@ -40,20 +47,22 @@ export function insertToken(token: {
   top_holder_pct: number;
   status: 'RED' | 'YELLOW' | 'GREEN';
   risk_reasons: string[];
+  risk_breakdown?: Record<string, number>;
   source: string;
 }) {
   const db = getDb();
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO tokens 
     (mint, name, symbol, deployer, risk_score, lp_locked, lp_lock_duration, 
-     mint_authority_revoked, holder_count, top_holder_pct, status, risk_reasons, source, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+     mint_authority_revoked, holder_count, top_holder_pct, status, risk_reasons, risk_breakdown, source, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
   `);
   return stmt.run(
     token.mint, token.name, token.symbol, token.deployer,
     token.risk_score, token.lp_locked ? 1 : 0, token.lp_lock_duration,
     token.mint_authority_revoked ? 1 : 0, token.holder_count,
     token.top_holder_pct, token.status, JSON.stringify(token.risk_reasons),
+    JSON.stringify(token.risk_breakdown || {}),
     token.source
   );
 }

@@ -11,6 +11,7 @@ export interface Token {
   top_holder_pct: number;
   status: 'RED' | 'YELLOW' | 'GREEN';
   risk_reasons: string;
+  risk_breakdown: string;
   source: string;
   created_at: string;
   updated_at: string;

@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS tokens (
   top_holder_pct REAL DEFAULT 0,
   status TEXT CHECK(status IN ('RED','YELLOW','GREEN')) DEFAULT 'YELLOW',
   risk_reasons TEXT DEFAULT '[]',
+  risk_breakdown TEXT DEFAULT '{}',
   source TEXT DEFAULT 'pump.fun',
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))

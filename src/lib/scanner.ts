@@ -98,6 +98,7 @@ export async function scanToken(mint: string): Promise<{
       top_holder_pct: 0,
       status: risk.status,
       risk_reasons: risk.reasons,
+      risk_breakdown: risk.breakdown,
       source: 'pump.fun',
     });
 
