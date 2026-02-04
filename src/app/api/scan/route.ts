@@ -6,6 +6,7 @@ import { getTokenByMint } from '@/lib/db';
 /**
  * POST /api/scan — Scan a token by mint address.
  * Body: { "mint": "..." }
+ * Returns full token data (scans if new, returns cached if already scanned).
  */
 export async function POST(request: NextRequest) {
   try {
@@ -18,26 +19,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check Solana address format (base58, 32-44 chars)
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint.trim())) {
+      return NextResponse.json(
+        { error: 'Invalid Solana address format' },
+        { status: 400 },
+      );
+    }
+
+    const cleanMint = mint.trim();
+
+    // Return cached result if already scanned
+    const existing = getTokenByMint(cleanMint);
+    if (existing) {
+      return NextResponse.json({
+        cached: true,
+        token: existing,
+      });
+    }
+
     // Scan the token
-    const result = await scanToken(mint);
+    const result = await scanToken(cleanMint);
 
     if (!result) {
-      // Check if it was already scanned
-      const existing = getTokenByMint(mint);
-      if (existing) {
-        return NextResponse.json({
-          message: 'Token already scanned',
-          token: existing,
-        });
-      }
       return NextResponse.json(
-        { error: 'Could not scan token — no data available' },
+        { error: 'Could not scan token. It may not exist or RugCheck has no data for it.' },
         { status: 404 },
       );
     }
 
     // Check if alert should fire
-    const alerted = await maybeAlert({
+    await maybeAlert({
       mint: result.mint,
       name: '',
       symbol: '',
@@ -47,9 +59,12 @@ export async function POST(request: NextRequest) {
       deployer: '',
     });
 
+    // Fetch the full saved token from DB (includes breakdown)
+    const savedToken = getTokenByMint(cleanMint);
+
     return NextResponse.json({
-      ...result,
-      alerted,
+      cached: false,
+      token: savedToken,
     });
   } catch (error) {
     console.error('Scan error:', error);

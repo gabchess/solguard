@@ -35,6 +35,103 @@ function RiskBar({ label, value, color }: { label: string; value: number; color:
   );
 }
 
+// --- Search Bar ---
+function SearchBar() {
+  const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [result, setResult] = useState<Token | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSearch = async () => {
+    const mint = query.trim();
+    if (!mint) return;
+
+    setSearching(true);
+    setResult(null);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mint }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Scan failed');
+        return;
+      }
+
+      setResult(data.token);
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  return (
+    <div className="mb-6">
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder="Paste a Solana token mint address to scan..."
+            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition"
+          />
+          {searching && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+        </div>
+        <button
+          onClick={handleSearch}
+          disabled={searching || !query.trim()}
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white text-sm font-medium rounded-xl transition"
+        >
+          Scan
+        </button>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">
+          {error}
+        </div>
+      )}
+
+      {/* Result Card */}
+      {result && (
+        <div className="mt-3 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden animate-in">
+          <div className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <RiskBadge status={result.status} score={result.risk_score} />
+              <div>
+                <span className="font-medium text-white">{result.name || 'Unknown'}</span>
+                <span className="text-gray-500 text-sm ml-2">${result.symbol || '???'}</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setResult(null)}
+              className="text-gray-500 hover:text-gray-300 text-lg"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="border-t border-gray-800">
+            <TokenDetail token={result} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Stats Bar ---
 function StatsBar({ stats }: { stats: TokenStats | null }) {
   if (!stats) return null;
@@ -351,6 +448,9 @@ export default function Dashboard() {
           <p className="text-xs text-gray-600 mt-2">Last updated: {lastUpdate} · Auto-refreshes every 30s</p>
         )}
       </div>
+
+      {/* Search */}
+      <SearchBar />
 
       {/* Stats */}
       <StatsBar stats={stats} />
