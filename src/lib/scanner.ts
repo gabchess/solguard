@@ -1,3 +1,4 @@
+import 'server-only';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getTokenSummary, getTokenReport } from './rugcheck';
 import { calculateRisk } from './risk-engine';

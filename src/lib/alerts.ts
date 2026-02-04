@@ -1,6 +1,7 @@
+import 'server-only';
 import crypto from 'crypto';
 import axios from 'axios';
-import { insertAlert } from './db';
+import { insertAlert, getDb } from './db';
 
 // X API v2 credentials
 const API_KEY = process.env.X_API_KEY || '';
@@ -136,6 +137,14 @@ function composeAlertTweet(alert: AlertPayload): string {
  */
 export async function maybeAlert(payload: AlertPayload): Promise<boolean> {
   if (payload.status !== 'RED' || payload.score > ALERT_THRESHOLD) {
+    return false;
+  }
+
+  // Prevent duplicate alerts for the same token
+  const db = getDb();
+  const existingAlert = db.prepare('SELECT 1 FROM alerts WHERE token_mint = ?').get(payload.mint);
+  if (existingAlert) {
+    console.log(`[ALERTS] Alert already posted for ${payload.mint} — skipping`);
     return false;
   }
 
