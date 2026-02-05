@@ -2,7 +2,7 @@ import 'server-only';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getTokenSummary, getTokenReport } from './rugcheck';
 import { calculateRisk } from './risk-engine';
-import { insertToken, insertScan, getTokenByMint, getDb } from './db';
+import { insertToken, insertScan, getTokenByMint, executeQuery } from './db';
 import { getDeployerHistory } from './helius';
 
 const PUMP_FUN_PROGRAM = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P';
@@ -25,7 +25,7 @@ export async function scanToken(mint: string): Promise<{
 } | null> {
   try {
     // Skip if already scanned
-    const existing = getTokenByMint(mint);
+    const existing = await getTokenByMint(mint);
     if (existing) {
       console.log(`[SCANNER] Already scanned: ${mint}`);
       return null;
@@ -58,11 +58,11 @@ export async function scanToken(mint: string): Promise<{
         deployerTotalTokens = mintTxs.length;
 
         // Check how many of deployer's previous tokens scored RED in our DB
-        const db = getDb();
-        const redCount = db.prepare(
-          "SELECT COUNT(*) as count FROM tokens WHERE deployer = ? AND status = 'RED' AND mint != ?"
-        ).get(deployer, mint) as { count: number };
-        deployerPreviousRugs = redCount.count;
+        const redCountResult = await executeQuery(
+          "SELECT COUNT(*) as count FROM tokens WHERE deployer = ? AND status = 'RED' AND mint != ?",
+          [deployer, mint]
+        );
+        deployerPreviousRugs = Number(redCountResult.rows[0]?.count ?? 0);
 
         // Get token age from the earliest mint tx for THIS token
         const thisMintTx = mintTxs.find(tx =>
@@ -86,7 +86,7 @@ export async function scanToken(mint: string): Promise<{
     const symbol = report?.fileMeta?.symbol || report?.tokenMeta?.symbol || '???';
 
     // Save to database
-    insertToken({
+    await insertToken({
       mint,
       name,
       symbol,
@@ -104,7 +104,7 @@ export async function scanToken(mint: string): Promise<{
     });
 
     // Save scan result
-    insertScan(mint, 'rugcheck', JSON.stringify({
+    await insertScan(mint, 'rugcheck', JSON.stringify({
       score: summary?.score,
       score_normalised: summary?.score_normalised,
       lpLockedPct: summary?.lpLockedPct,

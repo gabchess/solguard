@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const cleanMint = mint.trim();
 
     // Return cached result if already scanned
-    const existing = getTokenByMint(cleanMint);
+    const existing = await getTokenByMint(cleanMint);
     if (existing) {
       return NextResponse.json({
         cached: true,
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Fetch the full saved token from DB (includes breakdown)
-    const savedToken = getTokenByMint(cleanMint);
+    const savedToken = await getTokenByMint(cleanMint);
 
     return NextResponse.json({
       cached: false,

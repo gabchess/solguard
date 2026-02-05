@@ -1,41 +1,80 @@
 import 'server-only';
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import { createClient, Client, InValue } from '@libsql/client';
 
-const DB_PATH = path.join(process.cwd(), 'db', 'solguard.db');
-const SCHEMA_PATH = path.join(process.cwd(), 'db', 'schema.sql');
+// Turso/LibSQL client - supports both local SQLite and cloud
+const client: Client = createClient({
+  url: process.env.TURSO_DATABASE_URL || 'file:./db/solguard.db',
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
 
-let db: Database.Database;
+// Initialize schema on module load
+const schemaInitialized = (async () => {
+  try {
+    await client.executeMultiple(`
+      CREATE TABLE IF NOT EXISTS tokens (
+        mint TEXT PRIMARY KEY,
+        name TEXT,
+        symbol TEXT,
+        deployer TEXT,
+        risk_score INTEGER DEFAULT 50,
+        lp_locked INTEGER DEFAULT 0,
+        lp_lock_duration INTEGER DEFAULT 0,
+        mint_authority_revoked INTEGER DEFAULT 0,
+        holder_count INTEGER DEFAULT 0,
+        top_holder_pct REAL DEFAULT 0,
+        status TEXT CHECK(status IN ('RED','YELLOW','GREEN')) DEFAULT 'YELLOW',
+        risk_reasons TEXT DEFAULT '[]',
+        risk_breakdown TEXT DEFAULT '{}',
+        source TEXT DEFAULT 'pump.fun',
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
 
-export function getDb(): Database.Database {
-  if (!db) {
-    // Ensure db directory exists
-    const dbDir = path.dirname(DB_PATH);
-    if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
-    }
+      CREATE TABLE IF NOT EXISTS scans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token_mint TEXT REFERENCES tokens(mint),
+        scan_type TEXT,
+        result_json TEXT,
+        scanned_at TEXT DEFAULT (datetime('now'))
+      );
 
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
+      CREATE TABLE IF NOT EXISTS alerts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token_mint TEXT REFERENCES tokens(mint),
+        alert_type TEXT,
+        tweet_id TEXT,
+        message TEXT,
+        posted_at TEXT DEFAULT (datetime('now'))
+      );
 
-    // Run schema on first load
-    const schema = fs.readFileSync(SCHEMA_PATH, 'utf-8');
-    db.exec(schema);
-
-    // Migration: add risk_breakdown column if missing
-    try {
-      db.exec("ALTER TABLE tokens ADD COLUMN risk_breakdown TEXT DEFAULT '{}'");
-    } catch {
-      // Column already exists
-    }
+      CREATE INDEX IF NOT EXISTS idx_tokens_status ON tokens(status);
+      CREATE INDEX IF NOT EXISTS idx_tokens_risk_score ON tokens(risk_score);
+      CREATE INDEX IF NOT EXISTS idx_tokens_created_at ON tokens(created_at);
+      CREATE INDEX IF NOT EXISTS idx_tokens_deployer ON tokens(deployer);
+      CREATE INDEX IF NOT EXISTS idx_scans_token_mint ON scans(token_mint);
+      CREATE INDEX IF NOT EXISTS idx_alerts_token_mint ON alerts(token_mint);
+    `);
+    console.log('[DB] Schema initialized');
+  } catch (err) {
+    // Tables likely already exist
+    console.log('[DB] Schema already exists or error:', err);
   }
-  return db;
+})();
+
+// Get the client (for direct queries)
+export function getClient(): Client {
+  return client;
+}
+
+// Execute raw SQL query
+export async function executeQuery(sql: string, args: InValue[] = []) {
+  await schemaInitialized;
+  const result = await client.execute({ sql, args });
+  return result;
 }
 
 // Token operations
-export function insertToken(token: {
+export async function insertToken(token: {
   mint: string;
   name: string;
   symbol: string;
@@ -51,64 +90,92 @@ export function insertToken(token: {
   risk_breakdown?: Record<string, number>;
   source: string;
 }) {
-  const db = getDb();
-  const stmt = db.prepare(`
-    INSERT OR REPLACE INTO tokens 
-    (mint, name, symbol, deployer, risk_score, lp_locked, lp_lock_duration, 
-     mint_authority_revoked, holder_count, top_holder_pct, status, risk_reasons, risk_breakdown, source, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-  `);
-  return stmt.run(
-    token.mint, token.name, token.symbol, token.deployer,
-    token.risk_score, token.lp_locked ? 1 : 0, token.lp_lock_duration,
-    token.mint_authority_revoked ? 1 : 0, token.holder_count,
-    token.top_holder_pct, token.status, JSON.stringify(token.risk_reasons),
-    JSON.stringify(token.risk_breakdown || {}),
-    token.source
-  );
+  await schemaInitialized;
+  return client.execute({
+    sql: `
+      INSERT OR REPLACE INTO tokens 
+      (mint, name, symbol, deployer, risk_score, lp_locked, lp_lock_duration, 
+       mint_authority_revoked, holder_count, top_holder_pct, status, risk_reasons, risk_breakdown, source, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `,
+    args: [
+      token.mint, token.name, token.symbol, token.deployer,
+      token.risk_score, token.lp_locked ? 1 : 0, token.lp_lock_duration,
+      token.mint_authority_revoked ? 1 : 0, token.holder_count,
+      token.top_holder_pct, token.status, JSON.stringify(token.risk_reasons),
+      JSON.stringify(token.risk_breakdown || {}),
+      token.source
+    ],
+  });
 }
 
-export function getTokens(limit = 50, offset = 0) {
-  const db = getDb();
-  return db.prepare(`
-    SELECT * FROM tokens 
-    ORDER BY created_at DESC 
-    LIMIT ? OFFSET ?
-  `).all(limit, offset);
+export async function getTokens(limit = 50, offset = 0) {
+  await schemaInitialized;
+  const result = await client.execute({
+    sql: 'SELECT * FROM tokens ORDER BY created_at DESC LIMIT ? OFFSET ?',
+    args: [limit, offset],
+  });
+  return result.rows;
 }
 
-export function getTokenByMint(mint: string) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM tokens WHERE mint = ?').get(mint);
+export async function getTokenByMint(mint: string) {
+  await schemaInitialized;
+  const result = await client.execute({
+    sql: 'SELECT * FROM tokens WHERE mint = ?',
+    args: [mint],
+  });
+  return result.rows[0] || null;
 }
 
-export function getTokenStats() {
-  const db = getDb();
-  const total = db.prepare('SELECT COUNT(*) as count FROM tokens').get() as { count: number };
-  const red = db.prepare("SELECT COUNT(*) as count FROM tokens WHERE status = 'RED'").get() as { count: number };
-  const yellow = db.prepare("SELECT COUNT(*) as count FROM tokens WHERE status = 'YELLOW'").get() as { count: number };
-  const green = db.prepare("SELECT COUNT(*) as count FROM tokens WHERE status = 'GREEN'").get() as { count: number };
-  const avgScore = db.prepare('SELECT AVG(risk_score) as avg FROM tokens').get() as { avg: number };
-  
+export async function getTokenStats() {
+  await schemaInitialized;
+  const [total, red, yellow, green, avgScore] = await Promise.all([
+    client.execute('SELECT COUNT(*) as count FROM tokens'),
+    client.execute("SELECT COUNT(*) as count FROM tokens WHERE status = 'RED'"),
+    client.execute("SELECT COUNT(*) as count FROM tokens WHERE status = 'YELLOW'"),
+    client.execute("SELECT COUNT(*) as count FROM tokens WHERE status = 'GREEN'"),
+    client.execute('SELECT AVG(risk_score) as avg FROM tokens'),
+  ]);
+
   return {
-    total: total.count,
-    red: red.count,
-    yellow: yellow.count,
-    green: green.count,
-    avgScore: Math.round(avgScore.avg || 0),
+    total: Number(total.rows[0]?.count ?? 0),
+    red: Number(red.rows[0]?.count ?? 0),
+    yellow: Number(yellow.rows[0]?.count ?? 0),
+    green: Number(green.rows[0]?.count ?? 0),
+    avgScore: Math.round(Number(avgScore.rows[0]?.avg ?? 0)),
   };
 }
 
-export function insertScan(tokenMint: string, scanType: string, resultJson: string) {
-  const db = getDb();
-  return db.prepare(`
-    INSERT INTO scans (token_mint, scan_type, result_json) VALUES (?, ?, ?)
-  `).run(tokenMint, scanType, resultJson);
+export async function insertScan(tokenMint: string, scanType: string, resultJson: string) {
+  await schemaInitialized;
+  return client.execute({
+    sql: 'INSERT INTO scans (token_mint, scan_type, result_json) VALUES (?, ?, ?)',
+    args: [tokenMint, scanType, resultJson],
+  });
 }
 
-export function insertAlert(tokenMint: string, alertType: string, tweetId: string, message: string) {
-  const db = getDb();
-  return db.prepare(`
-    INSERT INTO alerts (token_mint, alert_type, tweet_id, message) VALUES (?, ?, ?, ?)
-  `).run(tokenMint, alertType, tweetId, message);
+export async function insertAlert(tokenMint: string, alertType: string, tweetId: string, message: string) {
+  await schemaInitialized;
+  return client.execute({
+    sql: 'INSERT INTO alerts (token_mint, alert_type, tweet_id, message) VALUES (?, ?, ?, ?)',
+    args: [tokenMint, alertType, tweetId, message],
+  });
+}
+
+// For backwards compatibility - deprecated, use executeQuery instead
+export function getDb() {
+  console.warn('[DB] getDb() is deprecated. Use executeQuery() or getClient() instead.');
+  return {
+    prepare: (sql: string) => ({
+      run: async (...args: InValue[]) => executeQuery(sql, args),
+      get: async (...args: InValue[]) => {
+        const result = await executeQuery(sql, args);
+        return result.rows[0];
+      },
+      all: async (...args: InValue[]) => {
+        const result = await executeQuery(sql, args);
+        return result.rows;
+      },
+    }),
+  };
 }
