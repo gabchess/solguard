@@ -465,7 +465,7 @@ export default function Dashboard() {
           Live Token Risk Monitor
         </h1>
         <p className="text-sm text-gray-400">
-          Real-time rug pull detection for Solana. Tokens are scanned and scored automatically.
+          Pre-emptive rug pull detection for Solana. Scan any token and get an instant risk score.
         </p>
         {lastUpdate && (
           <p className="text-xs text-gray-600 mt-2">Last updated: {lastUpdate} · Auto-refreshes every 30s</p>

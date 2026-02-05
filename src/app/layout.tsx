@@ -27,7 +27,7 @@ export default function RootLayout({
             <div className="flex items-center gap-6 text-sm">
               <a href="/" className="text-white hover:text-blue-400 transition">Dashboard</a>
               <a href="/roadmap" className="text-gray-400 hover:text-white transition">Roadmap</a>
-              <a href="https://x.com/AriaLinkwell" target="_blank" className="text-gray-400 hover:text-white transition">@AriaLinkwell</a>
+              <span className="text-gray-500 cursor-not-allowed" title="Coming soon">Docs</span>
             </div>
           </div>
         </nav>
