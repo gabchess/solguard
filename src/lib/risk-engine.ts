@@ -78,7 +78,7 @@ export function calculateRisk(
     reasons.push('Could not verify LP lock status');
   }
 
-  // --- AUTHORITY SCORE (20%) ---
+  // --- AUTHORITY SCORE (15%) ---
   if (report) {
     let authScore = 100;
     

@@ -25,7 +25,16 @@ export async function POST(request: NextRequest) {
     }
     scanCooldowns.set(ip, Date.now());
 
-    const { mint } = await request.json();
+    let mint: string;
+    try {
+      const body = await request.json();
+      mint = body.mint;
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 },
+      );
+    }
 
     if (!mint || typeof mint !== 'string') {
       return NextResponse.json(

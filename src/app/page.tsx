@@ -215,8 +215,14 @@ function FilterBar({
 
 // --- Token Detail Panel (expanded view) ---
 function TokenDetail({ token }: { token: Token }) {
-  const reasons = JSON.parse(token.risk_reasons || '[]');
-  const breakdown = JSON.parse(token.risk_breakdown || '{}');
+  let reasons: string[] = [];
+  let breakdown: Record<string, number> = {};
+  try {
+    reasons = JSON.parse(token.risk_reasons || '[]');
+    breakdown = JSON.parse(token.risk_breakdown || '{}');
+  } catch {
+    // Fallback if JSON is malformed
+  }
 
   const bars = [
     { label: 'Deployer (40%)', value: breakdown.deployer ?? 50, color: 'text-gray-300' },
@@ -354,7 +360,7 @@ function TokenCard({ token, expanded, onToggle }: { token: Token; expanded: bool
 function TokenRow({ token, expanded, onToggle }: { token: Token; expanded: boolean; onToggle: () => void }) {
   const isNew = Date.now() - new Date(token.created_at).getTime() < 60000;
   const shortMint = `${token.mint.slice(0, 6)}...${token.mint.slice(-4)}`;
-  const shortDeployer = `${token.deployer.slice(0, 6)}...${token.deployer.slice(-4)}`;
+  const shortDeployer = token.deployer ? `${token.deployer.slice(0, 6)}...${token.deployer.slice(-4)}` : 'unknown';
 
   return (
     <>
@@ -465,7 +471,7 @@ export default function Dashboard() {
           Live Token Risk Monitor
         </h1>
         <p className="text-sm text-gray-400">
-          Pre-emptive rug pull detection for Solana. Scan any token and get an instant risk score.
+          Pre-emptive rug pull detection for Solana. Scan any token and get an instant risk score. Auto-scanning coming soon!
         </p>
         {lastUpdate && (
           <p className="text-xs text-gray-600 mt-2">Last updated: {lastUpdate} · Auto-refreshes every 30s</p>

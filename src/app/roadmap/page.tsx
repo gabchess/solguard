@@ -1,12 +1,15 @@
 export default function Roadmap() {
   const shipped = [
-    { name: 'Live Token Dashboard', desc: 'Real-time feed of new Solana tokens with risk scores', status: 'shipped' },
+    { name: 'Live Token Dashboard', desc: 'Real-time feed of Solana tokens with risk scores', status: 'shipped' },
     { name: 'Risk Scoring Engine', desc: 'Weighted analysis: deployer history, LP, authorities, concentration', status: 'shipped' },
     { name: 'RugCheck Integration', desc: 'Pull risk data from RugCheck API for every token', status: 'shipped' },
     { name: 'Color-Coded Risk Badges', desc: 'RED / YELLOW / GREEN instant visual risk assessment', status: 'shipped' },
+    { name: 'Manual Token Scanner', desc: 'Paste any Solana token address to get instant risk analysis', status: 'shipped' },
+    { name: 'Solana Docs Integration', desc: 'Learn More links to official Solana docs explaining each risk', status: 'shipped' },
   ];
 
   const building = [
+    { name: 'Auto-Scanning (Coming Soon)', desc: 'Automatic detection of new pump.fun tokens without manual input', status: 'building' },
     { name: 'pump.fun Real-Time Scanner', desc: 'WebSocket listener for new token launches — instant detection', status: 'building' },
     { name: 'Autonomous X Alerts', desc: 'Post critical risk warnings to X/Twitter automatically', status: 'building' },
     { name: 'Wallet Graph (2-hop)', desc: 'Trace deployer funding to link new wallets to known ruggers', status: 'building' },
