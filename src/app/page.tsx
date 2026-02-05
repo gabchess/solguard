@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import type { Token, TokenStats } from '@/types';
+import { getDocLink } from '@/lib/doc-links';
 
 // --- Risk Badge Component ---
 function RiskBadge({ status, score }: { status: string; score: number }) {
@@ -237,16 +238,38 @@ function TokenDetail({ token }: { token: Token }) {
         </div>
       </div>
 
-      {/* Risk Reasons */}
+      {/* Risk Reasons with Doc Links */}
       {reasons.length > 0 && (
         <div>
           <div className="text-sm font-medium text-gray-300 mb-2">Flags</div>
-          <ul className="space-y-1">
-            {reasons.map((r: string, i: number) => (
-              <li key={i} className="text-xs text-gray-400 flex items-start gap-2">
-                <span className="text-red-400 mt-0.5">●</span> {r}
-              </li>
-            ))}
+          <ul className="space-y-2">
+            {reasons.map((r: string, i: number) => {
+              const docLink = getDocLink(r);
+              return (
+                <li key={i} className="text-xs text-gray-400">
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-400 mt-0.5">●</span>
+                    <span className="flex-1">{r}</span>
+                    {docLink && (
+                      <a
+                        href={docLink.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 shrink-0"
+                        title={docLink.snippet}
+                      >
+                        📖
+                      </a>
+                    )}
+                  </div>
+                  {docLink && (
+                    <p className="ml-5 mt-1 text-[10px] text-gray-500 italic">
+                      {docLink.snippet}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
