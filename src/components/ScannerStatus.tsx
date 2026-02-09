@@ -6,6 +6,11 @@ type ScannerStatusData = {
   connected: boolean;
   tokensToday: number;
   lastScan: string | null;
+  autofeed?: {
+    running: boolean;
+    totalFed: number;
+    lastPoll: string | null;
+  };
 };
 
 export default function ScannerStatus() {
@@ -18,7 +23,7 @@ export default function ScannerStatus() {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const res = await fetch('/api/status');
+        const res = await fetch('/api/scanner/status');
         if (res.ok) {
           const data = await res.json();
           setStatus(data);
@@ -42,9 +47,9 @@ export default function ScannerStatus() {
         </div>
         <div className="text-[10px] text-cyber-blue uppercase tracking-widest mb-1">Network Uplink</div>
         <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-sm ${status.connected ? 'bg-cyber-green shadow-[0_0_10px_#00ff88]' : 'bg-cyber-red shadow-[0_0_10px_#ff2d2d]'}`} />
-          <span className={`text-xl font-bold tracking-tight ${status.connected ? 'text-white' : 'text-cyber-red'}`}>
-            {status.connected ? 'CONNECTED' : 'OFFLINE'}
+          <div className={`w-3 h-3 rounded-sm ${(status.connected || status.autofeed?.running) ? 'bg-cyber-green shadow-[0_0_10px_#00ff88]' : 'bg-cyber-red shadow-[0_0_10px_#ff2d2d]'}`} />
+          <span className={`text-xl font-bold tracking-tight ${(status.connected || status.autofeed?.running) ? 'text-white' : 'text-cyber-red'}`}>
+            {status.connected ? 'LIVE_STREAM' : status.autofeed?.running ? 'AUTO_SCAN' : 'OFFLINE'}
           </span>
         </div>
       </div>
