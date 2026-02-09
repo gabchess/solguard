@@ -14,6 +14,29 @@ let reconnectAttempts = 0;
 let healthCheckInterval: ReturnType<typeof setInterval> | null = null;
 const MAX_RECONNECT_DELAY = 60000; // 60s max
 
+// --- Live scanner state (in-memory, for dashboard) ---
+let scannerConnected = false;
+let tokensScannedToday = 0;
+let lastScanTimestamp: string | null = null;
+let todayDateStr = new Date().toISOString().slice(0, 10);
+
+function resetDailyCountIfNeeded() {
+  const now = new Date().toISOString().slice(0, 10);
+  if (now !== todayDateStr) {
+    todayDateStr = now;
+    tokensScannedToday = 0;
+  }
+}
+
+export function getScannerStatus() {
+  resetDailyCountIfNeeded();
+  return {
+    connected: scannerConnected,
+    tokensToday: tokensScannedToday,
+    lastScan: lastScanTimestamp,
+  };
+}
+
 /**
  * Scan a single token: RugCheck + risk engine + save to DB.
  */
@@ -115,6 +138,11 @@ export async function scanToken(mint: string): Promise<{
     if (risk.reasons.length > 0) {
       risk.reasons.forEach(r => console.log(`  → ${r}`));
     }
+
+    // Update live scanner state
+    resetDailyCountIfNeeded();
+    tokensScannedToday++;
+    lastScanTimestamp = new Date().toISOString();
 
     return {
       mint,
@@ -219,11 +247,13 @@ export function startScanner(): void {
   );
 
   console.log(`[SCANNER] Subscribed (ID: ${subscriptionId})`);
+  scannerConnected = true;
 
   // Handle connection close / reconnect
   connection.onSlotChange(() => {
     // Reset reconnect counter on successful communication
     reconnectAttempts = 0;
+    scannerConnected = true;
   });
 
   // Clear any previous health check interval to prevent stacking
@@ -240,11 +270,13 @@ export function startScanner(): void {
       reconnectAttempts = 0;
     } catch {
       reconnectAttempts++;
+      scannerConnected = false;
       const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY);
       console.error(`[SCANNER] Connection lost — reconnecting in ${delay / 1000}s (attempt ${reconnectAttempts})`);
-      
+
       if (reconnectAttempts > 10) {
         console.error('[SCANNER] Too many reconnection attempts — restarting scanner');
+        scannerConnected = false;
         if (healthCheckInterval) {
           clearInterval(healthCheckInterval);
           healthCheckInterval = null;

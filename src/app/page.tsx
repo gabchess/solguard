@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import type { Token, TokenStats } from '@/types';
 import { getDocLink } from '@/lib/doc-links';
+import ScannerStatus from '@/components/ScannerStatus';
 
 // --- Risk Badge Component ---
 function RiskBadge({ status, score }: { status: string; score: number }) {
@@ -318,12 +319,10 @@ function TokenDetail({ token }: { token: Token }) {
 }
 
 // --- Token Card (mobile layout) ---
-function TokenCard({ token, expanded, onToggle }: { token: Token; expanded: boolean; onToggle: () => void }) {
-  const isNew = Date.now() - new Date(token.created_at).getTime() < 60000;
-
+function TokenCard({ token, expanded, onToggle, isNew }: { token: Token; expanded: boolean; onToggle: () => void; isNew?: boolean }) {
   return (
     <div className={`bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden transition-all ${
-      isNew ? 'ring-1 ring-blue-500/50 animate-pulse-once' : ''
+      isNew ? 'animate-new-token ring-1 ring-green-500/40' : ''
     }`}>
       <div
         className="p-4 cursor-pointer hover:bg-gray-800/30 transition"
@@ -357,8 +356,7 @@ function TokenCard({ token, expanded, onToggle }: { token: Token; expanded: bool
 }
 
 // --- Token Row (desktop table) ---
-function TokenRow({ token, expanded, onToggle }: { token: Token; expanded: boolean; onToggle: () => void }) {
-  const isNew = Date.now() - new Date(token.created_at).getTime() < 60000;
+function TokenRow({ token, expanded, onToggle, isNew }: { token: Token; expanded: boolean; onToggle: () => void; isNew?: boolean }) {
   const shortMint = `${token.mint.slice(0, 6)}...${token.mint.slice(-4)}`;
   const shortDeployer = token.deployer ? `${token.deployer.slice(0, 6)}...${token.deployer.slice(-4)}` : 'unknown';
 
@@ -366,7 +364,7 @@ function TokenRow({ token, expanded, onToggle }: { token: Token; expanded: boole
     <>
       <tr
         className={`border-b border-gray-800/50 hover:bg-gray-900/50 cursor-pointer transition ${
-          isNew ? 'bg-blue-500/5' : ''
+          isNew ? 'animate-new-row' : ''
         }`}
         onClick={onToggle}
       >
@@ -406,12 +404,31 @@ export default function Dashboard() {
   const [expandedMint, setExpandedMint] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterStatus>('ALL');
   const [sort, setSort] = useState<SortKey>('newest');
+  const [newMints, setNewMints] = useState<Set<string>>(new Set());
+  const knownMintsRef = useRef<Set<string>>(new Set());
 
   const fetchData = async () => {
     try {
       const res = await fetch('/api/tokens');
       const data = await res.json();
-      setTokens(data.tokens || []);
+      const incoming: Token[] = data.tokens || [];
+
+      // Detect newly arrived tokens (not in previous fetch)
+      if (knownMintsRef.current.size > 0) {
+        const fresh = incoming
+          .filter(t => !knownMintsRef.current.has(t.mint))
+          .map(t => t.mint);
+        if (fresh.length > 0) {
+          setNewMints(new Set(fresh));
+          // Clear highlight after animation duration
+          setTimeout(() => setNewMints(new Set()), 2500);
+        }
+      }
+
+      // Update known mints
+      knownMintsRef.current = new Set(incoming.map(t => t.mint));
+
+      setTokens(incoming);
       setStats(data.stats || null);
       setLastUpdate(new Date().toLocaleTimeString());
     } catch (err) {
@@ -423,7 +440,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(fetchData, 15000); // Poll every 15s for live feel
     return () => clearInterval(interval);
   }, []);
 
@@ -471,12 +488,15 @@ export default function Dashboard() {
           Live Token Risk Monitor
         </h1>
         <p className="text-sm text-gray-400">
-          Pre-emptive rug pull detection for Solana. Scan any token and get an instant risk score. Auto-scanning coming soon!
+          Pre-emptive rug pull detection for Solana. Auto-scanning pump.fun in real-time with instant risk scores.
         </p>
         {lastUpdate && (
-          <p className="text-xs text-gray-600 mt-2">Last updated: {lastUpdate} · Auto-refreshes every 30s</p>
+          <p className="text-xs text-gray-600 mt-2">Last updated: {lastUpdate} · Auto-refreshes every 15s</p>
         )}
       </div>
+
+      {/* Scanner Status */}
+      <ScannerStatus />
 
       {/* Search */}
       <SearchBar />
@@ -516,6 +536,7 @@ export default function Dashboard() {
               token={token}
               expanded={expandedMint === token.mint}
               onToggle={() => setExpandedMint(expandedMint === token.mint ? null : token.mint)}
+              isNew={newMints.has(token.mint)}
             />
           ))}
         </div>
@@ -545,6 +566,7 @@ export default function Dashboard() {
                     token={token}
                     expanded={expandedMint === token.mint}
                     onToggle={() => setExpandedMint(expandedMint === token.mint ? null : token.mint)}
+                    isNew={newMints.has(token.mint)}
                   />
                 ))}
               </tbody>
