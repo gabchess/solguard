@@ -6,6 +6,7 @@ import { getDocLink } from '@/lib/doc-links';
 import ScannerStatus from '@/components/ScannerStatus';
 import RiskChart from '@/components/RiskChart';
 import MatrixLoader from '@/components/MatrixLoader';
+import SerialRuggerBoard from '@/components/SerialRuggerBoard';
 
 // --- Risk Badge Component ---
 function RiskBadge({ status, score }: { status: string; score: number }) {
@@ -531,6 +532,9 @@ export default function Dashboard() {
 
       {/* Search */}
       <SearchBar />
+
+      {/* Serial Rugger Leaderboard */}
+      <SerialRuggerBoard />
 
       {/* Stats + Chart */}
       {stats && (

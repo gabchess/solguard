@@ -190,6 +190,32 @@ export async function insertAlert(tokenMint: string, alertType: string, tweetId:
   });
 }
 
+/**
+ * Get top deployers ranked by number of RED tokens (serial ruggers).
+ * Returns deployers with 2+ tokens, sorted by red count desc.
+ */
+export async function getSerialRuggers(limit: number = 10) {
+  await schemaInitialized;
+  const result = await client.execute({
+    sql: `SELECT 
+      deployer,
+      COUNT(*) as total_tokens,
+      SUM(CASE WHEN status = 'RED' THEN 1 ELSE 0 END) as red_count,
+      SUM(CASE WHEN status = 'YELLOW' THEN 1 ELSE 0 END) as yellow_count,
+      ROUND(AVG(risk_score)) as avg_score,
+      MIN(risk_score) as worst_score,
+      MAX(created_at) as latest_token_time
+    FROM tokens 
+    WHERE deployer != 'unknown'
+    GROUP BY deployer 
+    HAVING COUNT(*) >= 2
+    ORDER BY red_count DESC, avg_score ASC
+    LIMIT ?`,
+    args: [limit],
+  });
+  return result.rows;
+}
+
 // For backwards compatibility - deprecated, use executeQuery instead
 export function getDb() {
   console.warn('[DB] getDb() is deprecated. Use executeQuery() or getClient() instead.');
