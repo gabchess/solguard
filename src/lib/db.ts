@@ -192,12 +192,12 @@ export async function insertAlert(tokenMint: string, alertType: string, tweetId:
 
 /**
  * Get top deployers ranked by number of RED tokens (serial ruggers).
- * Returns deployers with 2+ tokens, sorted by red count desc.
+ * Only returns deployers with red_count > 0 or avg_score < 50.
  */
 export async function getSerialRuggers(limit: number = 10) {
   await schemaInitialized;
   const result = await client.execute({
-    sql: `SELECT 
+    sql: `SELECT
       deployer,
       COUNT(*) as total_tokens,
       SUM(CASE WHEN status = 'RED' THEN 1 ELSE 0 END) as red_count,
@@ -205,15 +205,23 @@ export async function getSerialRuggers(limit: number = 10) {
       ROUND(AVG(risk_score)) as avg_score,
       MIN(risk_score) as worst_score,
       MAX(created_at) as latest_token_time
-    FROM tokens 
-    WHERE deployer != 'unknown'
-    GROUP BY deployer 
-    HAVING COUNT(*) >= 1
+    FROM tokens
+    WHERE deployer IS NOT NULL AND deployer != '' AND deployer != 'unknown'
+    GROUP BY deployer
+    HAVING red_count > 0 OR avg_score < 50
     ORDER BY red_count DESC, avg_score ASC
     LIMIT ?`,
     args: [limit],
   });
-  return result.rows;
+  return result.rows.map(row => ({
+    deployer: row.deployer,
+    total_tokens: Number(row.total_tokens ?? 0),
+    red_count: Number(row.red_count ?? 0),
+    yellow_count: Number(row.yellow_count ?? 0),
+    avg_score: Number(row.avg_score ?? 0),
+    worst_score: Number(row.worst_score ?? 0),
+    latest_token_time: row.latest_token_time,
+  }));
 }
 
 // For backwards compatibility - deprecated, use executeQuery instead
