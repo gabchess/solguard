@@ -283,6 +283,14 @@ function TokenDetail({ token }: { token: Token }) {
 
       {/* Links */}
       <div className="flex flex-wrap gap-3 pt-1">
+        {token.deployer && token.deployer !== 'unknown' && (
+          <a
+            href={`/deployer/${token.deployer}`}
+            className="text-xs text-orange-400 hover:text-orange-300 transition font-medium"
+          >
+            Deployer Profile →
+          </a>
+        )}
         <a
           href={`https://rugcheck.xyz/tokens/${token.mint}`}
           target="_blank"
@@ -376,7 +384,19 @@ function TokenRow({ token, expanded, onToggle, isNew }: { token: Token; expanded
           <div className="text-xs text-gray-500">${token.symbol || '???'}</div>
         </td>
         <td className="px-4 py-3 font-mono text-xs text-gray-400">{shortMint}</td>
-        <td className="px-4 py-3 font-mono text-xs text-gray-400">{shortDeployer}</td>
+        <td className="px-4 py-3 font-mono text-xs">
+          {token.deployer && token.deployer !== 'unknown' ? (
+            <a
+              href={`/deployer/${token.deployer}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-blue-400 hover:text-blue-300 transition underline decoration-blue-400/30 hover:decoration-blue-300"
+            >
+              {shortDeployer}
+            </a>
+          ) : (
+            <span className="text-gray-400">{shortDeployer}</span>
+          )}
+        </td>
         <td className="px-4 py-3 text-xs text-gray-400">{token.lp_locked ? '✅' : '❌'}</td>
         <td className="px-4 py-3 text-xs text-gray-400">{token.mint_authority_revoked ? '✅' : '⚠️'}</td>
         <td className="px-4 py-3 text-xs text-gray-500">{token.source}</td>

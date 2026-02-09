@@ -146,6 +146,34 @@ export async function getTokenStats() {
   };
 }
 
+export async function getTokensByDeployer(deployer: string) {
+  await schemaInitialized;
+  const result = await client.execute({
+    sql: 'SELECT * FROM tokens WHERE deployer = ? ORDER BY created_at DESC',
+    args: [deployer],
+  });
+  return result.rows;
+}
+
+export async function getDeployerStats(deployer: string) {
+  await schemaInitialized;
+  const [total, red, yellow, green, avgScore] = await Promise.all([
+    client.execute({ sql: 'SELECT COUNT(*) as count FROM tokens WHERE deployer = ?', args: [deployer] }),
+    client.execute({ sql: "SELECT COUNT(*) as count FROM tokens WHERE deployer = ? AND status = 'RED'", args: [deployer] }),
+    client.execute({ sql: "SELECT COUNT(*) as count FROM tokens WHERE deployer = ? AND status = 'YELLOW'", args: [deployer] }),
+    client.execute({ sql: "SELECT COUNT(*) as count FROM tokens WHERE deployer = ? AND status = 'GREEN'", args: [deployer] }),
+    client.execute({ sql: 'SELECT AVG(risk_score) as avg FROM tokens WHERE deployer = ?', args: [deployer] }),
+  ]);
+
+  return {
+    total: Number(total.rows[0]?.count ?? 0),
+    red: Number(red.rows[0]?.count ?? 0),
+    yellow: Number(yellow.rows[0]?.count ?? 0),
+    green: Number(green.rows[0]?.count ?? 0),
+    avgScore: Math.round(Number(avgScore.rows[0]?.avg ?? 0)),
+  };
+}
+
 export async function insertScan(tokenMint: string, scanType: string, resultJson: string) {
   await schemaInitialized;
   return client.execute({
