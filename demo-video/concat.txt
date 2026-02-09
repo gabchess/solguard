@@ -1,0 +1,7 @@
+file 'audio/01-hook.opus'
+file 'audio/02-intro.opus'
+file 'audio/03-dashboard.opus'
+file 'audio/04-search.opus'
+file 'audio/05-rugger.opus'
+file 'audio/06-howitworks.opus'
+file 'audio/07-close.opus'
