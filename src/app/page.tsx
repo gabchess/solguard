@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import type { Token, TokenStats } from '@/types';
 import { getDocLink } from '@/lib/doc-links';
 import ScannerStatus from '@/components/ScannerStatus';
+import RiskChart from '@/components/RiskChart';
 
 // --- Risk Badge Component ---
 function RiskBadge({ status, score }: { status: string; score: number }) {
@@ -130,35 +131,6 @@ function SearchBar() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// --- Stats Bar ---
-function StatsBar({ stats }: { stats: TokenStats | null }) {
-  if (!stats) return null;
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-6">
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-        <div className="text-2xl font-bold text-white">{stats.total}</div>
-        <div className="text-xs text-gray-500 mt-1">Tokens Tracked</div>
-      </div>
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-        <div className="text-2xl font-bold text-red-400">{stats.red}</div>
-        <div className="text-xs text-gray-500 mt-1">High Risk</div>
-      </div>
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-        <div className="text-2xl font-bold text-yellow-400">{stats.yellow}</div>
-        <div className="text-xs text-gray-500 mt-1">Medium Risk</div>
-      </div>
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-        <div className="text-2xl font-bold text-green-400">{stats.green}</div>
-        <div className="text-xs text-gray-500 mt-1">Low Risk</div>
-      </div>
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-        <div className="text-2xl font-bold text-blue-400">{stats.avgScore}</div>
-        <div className="text-xs text-gray-500 mt-1">Avg Score</div>
-      </div>
     </div>
   );
 }
@@ -521,8 +493,34 @@ export default function Dashboard() {
       {/* Search */}
       <SearchBar />
 
-      {/* Stats */}
-      <StatsBar stats={stats} />
+      {/* Stats + Chart */}
+      {stats && (
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          {/* Donut Chart */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 w-full md:w-48 h-48 md:h-auto md:min-h-[180px] shrink-0">
+            <RiskChart stats={stats} />
+          </div>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1">
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+              <div className="text-2xl font-bold text-red-400">{stats.red}</div>
+              <div className="text-xs text-gray-500 mt-1">High Risk</div>
+            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+              <div className="text-2xl font-bold text-yellow-400">{stats.yellow}</div>
+              <div className="text-xs text-gray-500 mt-1">Medium Risk</div>
+            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+              <div className="text-2xl font-bold text-green-400">{stats.green}</div>
+              <div className="text-xs text-gray-500 mt-1">Low Risk</div>
+            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+              <div className="text-2xl font-bold text-blue-400">{stats.avgScore}</div>
+              <div className="text-xs text-gray-500 mt-1">Avg Score</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <FilterBar
