@@ -48,6 +48,7 @@ export default function RootLayout({
             </div>
             <div className="flex items-center gap-8 text-sm tracking-wide">
               <a href="/" className="text-cyber-blue border-b border-cyber-blue pb-0.5 drop-shadow-[0_0_5px_rgba(0,212,255,0.5)]">DASHBOARD</a>
+              <a href="/leaderboard" className="text-gray-500 hover:text-white transition hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">LEADERBOARD</a>
               <a href="/roadmap" className="text-gray-500 hover:text-white transition hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">ROADMAP</a>
               <span className="text-gray-700 cursor-not-allowed decoration-slice">DOCS_LOCKED</span>
             </div>
