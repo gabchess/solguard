@@ -1,76 +1,88 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Cyberpunk Palette */
+  --background: #0a0a0f;
+  --foreground: #ededed;
+  
+  --color-cyber-black: #0a0a0f;
+  --color-cyber-gray: #12121a;
+  --color-cyber-red: #ff2d2d;
+  --color-cyber-yellow: #ffb800;
+  --color-cyber-green: #00ff88;
+  --color-cyber-blue: #00d4ff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-mono: var(--font-jetbrains-mono), monospace;
+  
+  /* Custom Colors */
+  --color-cyber-black: var(--color-cyber-black);
+  --color-cyber-gray: var(--color-cyber-gray);
+  --color-cyber-red: var(--color-cyber-red);
+  --color-cyber-yellow: var(--color-cyber-yellow);
+  --color-cyber-green: var(--color-cyber-green);
+  --color-cyber-blue: var(--color-cyber-blue);
+  
+  /* Animations */
+  --animate-scanlines: scanlines 8s linear infinite;
+  --animate-matrix-fade: matrixFade 2s ease-out;
+  --animate-pulse-glow: pulseGlow 2s infinite;
+  
+  @keyframes scanlines {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 0% 100%; }
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  @keyframes matrixFade {
+    0% { opacity: 0; transform: translateY(-10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 5px currentColor; }
+    50% { box-shadow: 0 0 20px currentColor; }
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-mono);
+  overflow-x: hidden;
 }
 
-/* Search result entrance animation */
-.animate-in {
-  animation: slideIn 0.3s ease-out;
+/* Cyberpunk Scanline Effect */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 1px,
+    rgba(0, 212, 255, 0.03) 2px,
+    rgba(0, 212, 255, 0.03) 3px
+  );
+  pointer-events: none;
+  z-index: 50;
+  animation: scanlines 60s linear infinite;
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: rgba(18, 18, 26, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* New token green flash highlight */
-.animate-new-token {
-  animation: greenFlash 2s ease-out;
-}
-
-@keyframes greenFlash {
-  0% {
-    background-color: rgba(34, 197, 94, 0.25);
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
-  }
-  50% {
-    background-color: rgba(34, 197, 94, 0.1);
-    box-shadow: 0 0 10px rgba(34, 197, 94, 0.15);
-  }
-  100% {
-    background-color: transparent;
-    box-shadow: none;
-  }
-}
-
-/* New token row flash (for table rows) */
-.animate-new-row {
-  animation: rowFlash 2s ease-out;
-}
-
-@keyframes rowFlash {
-  0% {
-    background-color: rgba(34, 197, 94, 0.2);
-  }
-  100% {
-    background-color: transparent;
-  }
+.glass-panel-hover:hover {
+  background: rgba(18, 18, 26, 0.9);
+  border-color: rgba(0, 212, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.1);
 }

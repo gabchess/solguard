@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import type { Token, TokenStats } from '@/types';
+import MatrixLoader from '@/components/MatrixLoader';
 
 type ThreatLevel = 'SERIAL_RUGGER' | 'SUSPICIOUS' | 'CLEAN';
 
@@ -14,53 +15,53 @@ function getThreatLevel(redCount: number): ThreatLevel {
 
 const threatConfig = {
   SERIAL_RUGGER: {
-    label: 'Serial Rugger',
-    bg: 'bg-red-500/10',
-    border: 'border-red-500/40',
-    text: 'text-red-400',
-    badgeBg: 'bg-red-500/20',
-    badgeBorder: 'border-red-500/50',
-    badgeText: 'text-red-300',
-    icon: '🚨',
-    glow: 'shadow-[0_0_40px_rgba(239,68,68,0.15)]',
-    description: 'This deployer has launched multiple tokens that scored as high-risk rug pulls.',
+    label: 'SERIAL_RUGGER',
+    bg: 'bg-cyber-red/10',
+    border: 'border-cyber-red/50',
+    text: 'text-cyber-red',
+    badgeBg: 'bg-cyber-red/20',
+    badgeBorder: 'border-cyber-red',
+    badgeText: 'text-white',
+    icon: '☠️',
+    glow: 'shadow-[0_0_20px_rgba(255,45,45,0.3)]',
+    description: 'TARGET_IDENTIFIED: REPEATOFFENDER. MULTIPLE HIGH-RISK DEPLOYMENTS DETECTED.',
   },
   SUSPICIOUS: {
-    label: 'Suspicious',
-    bg: 'bg-yellow-500/5',
-    border: 'border-yellow-500/30',
-    text: 'text-yellow-400',
-    badgeBg: 'bg-yellow-500/20',
-    badgeBorder: 'border-yellow-500/50',
-    badgeText: 'text-yellow-300',
+    label: 'SUSPICIOUS',
+    bg: 'bg-cyber-yellow/10',
+    border: 'border-cyber-yellow/50',
+    text: 'text-cyber-yellow',
+    badgeBg: 'bg-cyber-yellow/20',
+    badgeBorder: 'border-cyber-yellow',
+    badgeText: 'text-white',
     icon: '⚠️',
-    glow: 'shadow-[0_0_30px_rgba(234,179,8,0.1)]',
-    description: 'This deployer has launched tokens that raised risk flags.',
+    glow: 'shadow-[0_0_20px_rgba(255,184,0,0.3)]',
+    description: 'CAUTION: ANOMALOUS ACTIVITY DETECTED IN DEPLOYMENT HISTORY.',
   },
   CLEAN: {
-    label: 'Clean',
-    bg: 'bg-green-500/5',
-    border: 'border-green-500/20',
-    text: 'text-green-400',
-    badgeBg: 'bg-green-500/20',
-    badgeBorder: 'border-green-500/50',
-    badgeText: 'text-green-300',
+    label: 'CLEAN',
+    bg: 'bg-cyber-green/10',
+    border: 'border-cyber-green/50',
+    text: 'text-cyber-green',
+    badgeBg: 'bg-cyber-green/20',
+    badgeBorder: 'border-cyber-green',
+    badgeText: 'text-white',
     icon: '✅',
-    glow: '',
-    description: 'No high-risk tokens found from this deployer.',
+    glow: 'shadow-[0_0_20px_rgba(0,255,136,0.2)]',
+    description: 'NO SEARCHABLE THREAT VECTORS FOUND IN CURRENT DATABASE.',
   },
 };
 
 function RiskBadge({ status, score }: { status: string; score: number }) {
   const colors: Record<string, string> = {
-    RED: 'bg-red-500/20 text-red-400 border-red-500/30',
-    YELLOW: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    GREEN: 'bg-green-500/20 text-green-400 border-green-500/30',
+    RED: 'text-cyber-red border-cyber-red shadow-[0_0_5px_rgba(255,45,45,0.4)]',
+    YELLOW: 'text-cyber-yellow border-cyber-yellow shadow-[0_0_5px_rgba(255,184,0,0.4)]',
+    GREEN: 'text-cyber-green border-cyber-green shadow-[0_0_5px_rgba(0,255,136,0.4)]',
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${colors[status] || colors.YELLOW}`}>
-      <span className={`w-2 h-2 rounded-full ${status === 'RED' ? 'bg-red-500 animate-pulse' : status === 'GREEN' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-      {score}/100
+    <span className={`inline-flex items-center gap-2 px-2 py-0.5 rounded border ${colors[status] || colors.YELLOW} text-[10px] font-mono tracking-wider bg-black/40`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${status === 'RED' ? 'bg-cyber-red animate-pulse' : status === 'GREEN' ? 'bg-cyber-green' : 'bg-cyber-yellow'}`} />
+      RISK:{score}
     </span>
   );
 }
@@ -85,10 +86,14 @@ export default function DeployerProfilePage() {
           return;
         }
         const data = await res.json();
-        setTokens(data.tokens || []);
+        // Sort by date desc
+        const sortedTokens = (data.tokens || []).sort((a: Token, b: Token) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setTokens(sortedTokens);
         setStats(data.stats || null);
       } catch {
-        setError('Network error. Please try again.');
+        setError('UPLINK_FAILED: NETWORK_ERROR');
       } finally {
         setLoading(false);
       }
@@ -103,8 +108,8 @@ export default function DeployerProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div className="py-24">
+        <MatrixLoader />
       </div>
     );
   }
@@ -112,11 +117,11 @@ export default function DeployerProfilePage() {
   if (error) {
     return (
       <div className="max-w-2xl mx-auto py-12">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
-          <div className="text-red-400 text-lg font-medium mb-2">Error</div>
-          <div className="text-gray-400 text-sm">{error}</div>
-          <a href="/" className="inline-block mt-4 text-blue-400 hover:text-blue-300 text-sm">
-            ← Back to Dashboard
+        <div className="bg-cyber-red/10 border border-cyber-red/50 rounded-sm p-6 text-center shadow-[0_0_20px_rgba(255,45,45,0.1)]">
+          <div className="text-cyber-red text-xl font-bold mb-2 uppercase tracking-widest glitch">SYSTEM ERROR</div>
+          <div className="text-gray-400 text-sm font-mono mb-4">{">>"} {error}</div>
+          <a href="/" className="inline-block px-4 py-2 bg-cyber-red/20 text-cyber-red border border-cyber-red hover:bg-cyber-red hover:text-black transition uppercase text-xs font-bold tracking-widest">
+            Return to Base
           </a>
         </div>
       </div>
@@ -125,226 +130,188 @@ export default function DeployerProfilePage() {
 
   const threat = getThreatLevel(stats?.red ?? 0);
   const config = threatConfig[threat];
-  const shortAddr = `${address.slice(0, 6)}...${address.slice(-4)}`;
+  const shortAddr = `${address.slice(0, 4)}...${address.slice(-4)}`;
 
   return (
     <div className="max-w-4xl mx-auto">
       {/* Back link */}
-      <a href="/" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300 transition mb-6">
-        ← Back to Dashboard
+      <a href="/" className="inline-flex items-center gap-2 text-xs text-cyber-blue hover:text-white transition mb-8 font-mono tracking-widest uppercase">
+        <span>{'<<'}</span> RETURN_TO_DASHBOARD
       </a>
 
       {/* Profile Header */}
-      <div className={`${config.bg} border ${config.border} rounded-2xl p-6 md:p-8 mb-6 ${config.glow}`}>
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+      <div className={`relative overflow-hidden ${config.bg} border-2 ${config.border} p-8 mb-8 ${config.glow}`}>
+        <div className="absolute top-0 right-0 p-4 opacity-50">
+          <div className="text-[100px] leading-none opacity-10 grayscale">{config.icon}</div>
+        </div>
+
+        <div className="relative z-10 flex flex-col md:flex-row justify-between gap-6">
           <div>
-            <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Deployer Wallet</div>
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-lg md:text-xl text-white">{shortAddr}</span>
+            <div className="text-[10px] text-gray-500 uppercase tracking-[0.2em] mb-2 font-bold">Target Identity</div>
+            <div className="flex items-center gap-4 mb-2">
+              <span className="font-mono text-2xl md:text-3xl text-white tracking-tight">{shortAddr}</span>
               <button
                 onClick={copyAddress}
-                className="text-xs px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-lg transition"
+                className="text-[10px] px-2 py-1 border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue hover:text-black uppercase tracking-wider transition"
               >
-                {copied ? 'Copied' : 'Copy'}
+                {copied ? 'COPIED' : 'COPY_ADDR'}
               </button>
             </div>
-            <div className="font-mono text-xs text-gray-600 mt-1 hidden md:block break-all">
-              {address}
+            <div className="font-mono text-[10px] text-gray-500 break-all max-w-md">
+              ID: {address}
             </div>
           </div>
 
-          {/* Threat Badge */}
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border ${config.badgeBg} ${config.badgeBorder}`}>
-            <span className="text-lg">{config.icon}</span>
-            <span className={`text-sm font-bold ${config.badgeText}`}>{config.label}</span>
+          <div className="flex flex-col items-end">
+            <div className={`inline-flex items-center gap-3 px-4 py-2 border-2 ${config.badgeBg} ${config.badgeBorder} mb-2 shadow-lg`}>
+              <span className="text-xl animate-pulse">{config.icon}</span>
+              <span className={`text-lg font-black tracking-widest uppercase ${config.badgeText} glitch`}>{config.label}</span>
+            </div>
+            <p className={`text-[10px] uppercase font-mono tracking-normal text-right max-w-xs ${threat === 'CLEAN' ? 'text-cyber-green' : config.text}`}>
+              {config.description}
+            </p>
           </div>
         </div>
 
-        {/* Threat description */}
-        <p className={`text-sm ${threat === 'CLEAN' ? 'text-gray-400' : config.text} mb-6`}>
-          {config.description}
-        </p>
-
         {/* Stats Grid */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div className="bg-gray-950/50 border border-gray-800/50 rounded-xl p-3">
-              <div className="text-2xl font-bold text-white">{stats.total}</div>
-              <div className="text-xs text-gray-500 mt-0.5">Total Tokens</div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8 pt-6 border-t border-white/5">
+            <div className="bg-black/40 border border-white/10 p-3 text-center group hover:border-white/30 transition">
+              <div className="text-2xl font-mono text-white group-hover:text-cyber-blue">{stats.total}</div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Deployments</div>
             </div>
-            <div className={`bg-gray-950/50 border ${stats.red > 0 ? 'border-red-500/30' : 'border-gray-800/50'} rounded-xl p-3`}>
-              <div className={`text-2xl font-bold ${stats.red > 0 ? 'text-red-400' : 'text-gray-600'}`}>{stats.red}</div>
-              <div className="text-xs text-gray-500 mt-0.5">High Risk</div>
+            <div className="bg-black/40 border border-cyber-red/20 p-3 text-center group hover:border-cyber-red/50 transition">
+              <div className={`text-2xl font-mono ${stats.red > 0 ? 'text-cyber-red' : 'text-gray-600'}`}>{stats.red}</div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Critical</div>
             </div>
-            <div className="bg-gray-950/50 border border-gray-800/50 rounded-xl p-3">
-              <div className={`text-2xl font-bold ${stats.yellow > 0 ? 'text-yellow-400' : 'text-gray-600'}`}>{stats.yellow}</div>
-              <div className="text-xs text-gray-500 mt-0.5">Medium Risk</div>
+            <div className="bg-black/40 border border-cyber-yellow/20 p-3 text-center group hover:border-cyber-yellow/50 transition">
+              <div className={`text-2xl font-mono ${stats.yellow > 0 ? 'text-cyber-yellow' : 'text-gray-600'}`}>{stats.yellow}</div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Warnings</div>
             </div>
-            <div className="bg-gray-950/50 border border-gray-800/50 rounded-xl p-3">
-              <div className={`text-2xl font-bold ${stats.green > 0 ? 'text-green-400' : 'text-gray-600'}`}>{stats.green}</div>
-              <div className="text-xs text-gray-500 mt-0.5">Low Risk</div>
+            <div className="bg-black/40 border border-cyber-green/20 p-3 text-center group hover:border-cyber-green/50 transition">
+              <div className={`text-2xl font-mono ${stats.green > 0 ? 'text-cyber-green' : 'text-gray-600'}`}>{stats.green}</div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Clean</div>
             </div>
-            <div className="bg-gray-950/50 border border-gray-800/50 rounded-xl p-3">
-              <div className={`text-2xl font-bold ${
-                stats.avgScore <= 30 ? 'text-red-400' : stats.avgScore <= 60 ? 'text-yellow-400' : 'text-green-400'
-              }`}>{stats.avgScore}</div>
-              <div className="text-xs text-gray-500 mt-0.5">Avg Score</div>
+            <div className="bg-black/40 border border-cyber-blue/20 p-3 text-center group hover:border-cyber-blue/50 transition">
+              <div className={`text-2xl font-mono ${stats.avgScore <= 30 ? 'text-cyber-red' : stats.avgScore <= 60 ? 'text-cyber-yellow' : 'text-cyber-green'
+                }`}>{stats.avgScore}</div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Trust Score</div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Risk Distribution Bar */}
-      {stats && stats.total > 0 && (
-        <div className="mb-6">
-          <div className="text-xs text-gray-500 mb-2">Risk Distribution</div>
-          <div className="flex h-3 rounded-full overflow-hidden bg-gray-800">
-            {stats.red > 0 && (
-              <div
-                className="bg-red-500 transition-all duration-500"
-                style={{ width: `${(stats.red / stats.total) * 100}%` }}
-                title={`${stats.red} HIGH RISK`}
-              />
-            )}
-            {stats.yellow > 0 && (
-              <div
-                className="bg-yellow-500 transition-all duration-500"
-                style={{ width: `${(stats.yellow / stats.total) * 100}%` }}
-                title={`${stats.yellow} MEDIUM`}
-              />
-            )}
-            {stats.green > 0 && (
-              <div
-                className="bg-green-500 transition-all duration-500"
-                style={{ width: `${(stats.green / stats.total) * 100}%` }}
-                title={`${stats.green} LOW RISK`}
-              />
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Token Timeline */}
-      <div className="mb-4">
-        <h2 className="text-lg font-bold text-white mb-1">Token Launch History</h2>
-        <p className="text-xs text-gray-500">{tokens.length} token{tokens.length !== 1 ? 's' : ''} deployed by this wallet</p>
+      <div className="mb-6 flex items-baseline justify-between">
+        <h2 className="text-xl font-bold text-white tracking-widest uppercase">
+          <span className="text-cyber-blue">H</span>istory_Log
+        </h2>
+        <span className="text-xs font-mono text-gray-500">[{tokens.length} RECORDS FOUND]</span>
       </div>
 
       {tokens.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 bg-gray-900/50 border border-gray-800 rounded-xl">
-          No tokens found for this deployer in our database.
+        <div className="text-center py-16 text-gray-500 border border-dashed border-gray-800 font-mono bg-black/20">
+          {">>"} NULL_RESULT: NO DEPLOYMENT HISTORY FOUND.
         </div>
       ) : (
-        <div className="space-y-3">
-          {tokens.map((token) => {
+        <div className="relative pl-8 border-l border-cyber-gray/30 space-y-8">
+          {tokens.map((token, index) => {
             let reasons: string[] = [];
-            try { reasons = JSON.parse(token.risk_reasons || '[]'); } catch {}
+            try { reasons = JSON.parse(token.risk_reasons || '[]'); } catch { }
 
-            const borderColor = token.status === 'RED'
-              ? 'border-red-500/30 hover:border-red-500/50'
-              : token.status === 'YELLOW'
-              ? 'border-yellow-500/20 hover:border-yellow-500/40'
-              : 'border-green-500/20 hover:border-green-500/40';
-
-            const bgHover = token.status === 'RED'
-              ? 'hover:bg-red-500/5'
-              : 'hover:bg-gray-800/30';
+            const isRed = token.status === 'RED';
+            const statusColor = isRed ? 'bg-cyber-red' : token.status === 'YELLOW' ? 'bg-cyber-yellow' : 'bg-cyber-green';
 
             return (
-              <div
-                key={token.mint}
-                className={`bg-gray-900/50 border ${borderColor} rounded-xl p-4 transition ${bgHover}`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <RiskBadge status={token.status} score={token.risk_score} />
-                    <div>
-                      <span className="font-medium text-white text-sm">{token.name || 'Unknown'}</span>
-                      <span className="text-xs text-gray-500 ml-2">${token.symbol || '???'}</span>
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(token.created_at).toLocaleDateString(undefined, {
-                      month: 'short', day: 'numeric', year: 'numeric',
-                    })}
-                  </div>
-                </div>
+              <div key={token.mint} className="relative">
+                {/* Timeline Dot */}
+                <div className={`absolute -left-[37px] top-6 w-4 h-4 rounded-full ${statusColor} border-4 border-cyber-black shadow-[0_0_10px_currentColor] z-10`} />
 
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                  <span className="font-mono">{token.mint.slice(0, 8)}...{token.mint.slice(-4)}</span>
-                  <div className="flex gap-3">
-                    <span>LP: {token.lp_locked ? '✅' : '❌'}</span>
-                    <span>Mint Auth: {token.mint_authority_revoked ? '✅' : '⚠️'}</span>
-                  </div>
-                </div>
-
-                {/* Risk flags for RED tokens */}
-                {token.status === 'RED' && reasons.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-gray-800/50">
-                    <ul className="space-y-1">
-                      {reasons.slice(0, 3).map((r, i) => (
-                        <li key={i} className="text-xs text-red-400/80 flex items-start gap-1.5">
-                          <span className="mt-0.5">●</span>
-                          <span>{r}</span>
-                        </li>
-                      ))}
-                      {reasons.length > 3 && (
-                        <li className="text-xs text-gray-600">+{reasons.length - 3} more flags</li>
-                      )}
-                    </ul>
-                  </div>
+                {/* Connector Line (if not last) */}
+                {index !== tokens.length - 1 && (
+                  <div className="absolute -left-[30px] top-8 bottom-[-40px] w-px bg-cyber-gray/30" />
                 )}
 
-                {/* Links */}
-                <div className="flex gap-3 mt-2 pt-2 border-t border-gray-800/50">
-                  <a
-                    href={`https://rugcheck.xyz/tokens/${token.mint}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-400 hover:text-blue-300 transition"
-                  >
-                    RugCheck →
-                  </a>
-                  <a
-                    href={`https://solscan.io/token/${token.mint}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-400 hover:text-blue-300 transition"
-                  >
-                    Solscan →
-                  </a>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(token.mint)}
-                    className="text-xs text-gray-500 hover:text-gray-300 transition"
-                  >
-                    Copy Mint
-                  </button>
+                <div className={`glass-panel p-5 relative group transition-all duration-300 ${isRed ? 'border-cyber-red/30 hover:border-cyber-red/60' : 'hover:border-cyber-blue/40'}`}>
+                  {isRed && <div className="absolute top-0 right-0 w-16 h-16 bg-cyber-red/10 blur-xl rounded-full -z-10" />}
+
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-black border border-white/10 flex items-center justify-center font-mono text-xs text-gray-500">
+                        {token.symbol?.slice(0, 2)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-white tracking-wide text-lg">{token.name || 'UNKNOWN'}</span>
+                          <span className="text-xs text-cyber-blue font-mono">${token.symbol || '???'}</span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 font-mono mt-1">
+                          {new Date(token.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                    <RiskBadge status={token.status} score={token.risk_score} />
+                  </div>
+
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono text-gray-500 border-t border-white/5 pt-4 mb-4">
+                    <div>
+                      <span className="block text-gray-700 mb-1">MINT_ADDR</span>
+                      <span className="text-gray-400">{token.mint.slice(0, 8)}...</span>
+                    </div>
+                    <div>
+                      <span className="block text-gray-700 mb-1">LIQUIDITY</span>
+                      <span className={token.lp_locked ? 'text-cyber-green' : 'text-cyber-red'}>{token.lp_locked ? 'LOCKED' : 'UNLOCKED'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-gray-700 mb-1">AUTHORITY</span>
+                      <span className={token.mint_authority_revoked ? 'text-cyber-green' : 'text-cyber-yellow'}>{token.mint_authority_revoked ? 'REVOKED' : 'active'}</span>
+                    </div>
+                  </div>
+
+                  {/* Risk flags for RED tokens */}
+                  {isRed && reasons.length > 0 && (
+                    <div className="bg-cyber-red/5 border-l-2 border-cyber-red pl-3 py-2 my-4">
+                      <div className="text-[10px] text-cyber-red font-bold uppercase tracking-widest mb-1">Detected Threats</div>
+                      <ul className="space-y-1">
+                        {reasons.slice(0, 3).map((r, i) => (
+                          <li key={i} className="text-xs text-red-300/80 font-mono">
+                            » {r}
+                          </li>
+                        ))}
+                        {reasons.length > 3 && (
+                          <li className="text-[10px] text-red-500 italic uppercase">
+                            + {reasons.length - 3} additional vectors
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Links */}
+                  <div className="flex gap-4 pt-2">
+                    <a
+                      href={`https://rugcheck.xyz/tokens/${token.mint}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-cyber-blue hover:text-white transition uppercase tracking-widest"
+                    >
+                      [RugCheck]
+                    </a>
+                    <a
+                      href={`https://solscan.io/token/${token.mint}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-cyber-blue hover:text-white transition uppercase tracking-widest"
+                    >
+                      [Solscan]
+                    </a>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       )}
-
-      {/* External links */}
-      <div className="mt-8 pt-6 border-t border-gray-800 flex flex-wrap gap-4">
-        <a
-          href={`https://solscan.io/account/${address}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-blue-400 hover:text-blue-300 transition"
-        >
-          View on Solscan →
-        </a>
-        <a
-          href={`https://rugcheck.xyz/wallets/${address}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-blue-400 hover:text-blue-300 transition"
-        >
-          View on RugCheck →
-        </a>
-      </div>
     </div>
   );
 }

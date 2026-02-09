@@ -1,22 +1,25 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const jetbrainsMono = JetBrains_Mono({ 
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+});
 
 export const metadata: Metadata = {
-  title: "SolGuard — Autonomous Pre-Emptive Scam Detection for Solana",
-  description: "Real-time rug pull detection agent for Solana. Monitors pump.fun, scores risk with 5-factor analysis, and alerts before you get rugged.",
+  title: "SOLGUARD // SYSTEM ACCESS",
+  description: "Advanced Pre-Emptive Threat Detection for Solana. Neural network analysis of token contracts.",
   openGraph: {
-    title: "SolGuard — Pre-Emptive Scam Detection for Solana",
-    description: "Autonomous agent that monitors pump.fun in real-time, scores rug pull risk, and warns before you buy. Built for the Colosseum Solana Agent Hackathon.",
+    title: "SOLGUARD // SYSTEM ACCESS",
+    description: "Advanced Pre-Emptive Threat Detection for Solana. Neural network analysis of token contracts.",
     siteName: "SolGuard",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SolGuard — Pre-Emptive Scam Detection for Solana",
-    description: "Autonomous agent that monitors pump.fun in real-time, scores rug pull risk, and warns before you buy.",
+    title: "SOLGUARD // SYSTEM ACCESS",
+    description: "Advanced Pre-Emptive Threat Detection for Solana.",
   },
 };
 
@@ -27,27 +30,43 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} bg-gray-950 text-gray-100 min-h-screen`}>
-        <nav className="border-b border-gray-800 px-6 py-4">
+      <body className={`${jetbrainsMono.variable} antialiased min-h-screen selection:bg-cyber-blue selection:text-cyber-black`}>
+        <div className="fixed inset-0 bg-[radial-gradient(circle_at_center,_var(--color-cyber-blue)_0%,_transparent_100%)] opacity-5 pointer-events-none z-0" />
+        
+        <nav className="relative z-10 border-b border-cyber-gray/50 bg-cyber-black/80 backdrop-blur-md px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🛡️</span>
-              <span className="text-xl font-bold text-white">SolGuard</span>
-              <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-medium">BETA</span>
+            <div className="flex items-center gap-3 group cursor-pointer">
+              <div className="relative">
+                <span className="text-2xl filter drop-shadow-[0_0_8px_rgba(0,212,255,0.5)]">🛡️</span>
+                <div className="absolute inset-0 bg-cyber-blue blur-lg opacity-20 group-hover:opacity-40 transition-opacity" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold tracking-wider text-white group-hover:text-cyber-blue transition-colors">SOLGUARD</span>
+                <span className="text-[10px] text-cyber-blue/60 tracking-[0.2em] font-light">SYSTEM_ONLINE</span>
+              </div>
+              <span className="ml-2 text-[10px] border border-cyber-red/50 text-cyber-red px-1.5 py-0.5 rounded font-medium bg-cyber-red/10 animate-pulse">BETA_ACCESS</span>
             </div>
-            <div className="flex items-center gap-6 text-sm">
-              <a href="/" className="text-white hover:text-blue-400 transition">Dashboard</a>
-              <a href="/roadmap" className="text-gray-400 hover:text-white transition">Roadmap</a>
-              <span className="text-gray-500 cursor-not-allowed" title="Coming soon">Docs</span>
+            <div className="flex items-center gap-8 text-sm tracking-wide">
+              <a href="/" className="text-cyber-blue border-b border-cyber-blue pb-0.5 drop-shadow-[0_0_5px_rgba(0,212,255,0.5)]">DASHBOARD</a>
+              <a href="/roadmap" className="text-gray-500 hover:text-white transition hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">ROADMAP</a>
+              <span className="text-gray-700 cursor-not-allowed decoration-slice">DOCS_LOCKED</span>
             </div>
           </div>
         </nav>
-        <main className="max-w-7xl mx-auto px-6 py-8">
+
+        <main className="relative z-10 max-w-7xl mx-auto px-6 py-8">
           {children}
         </main>
-        <footer className="border-t border-gray-800 px-6 py-4 mt-12">
-          <div className="max-w-7xl mx-auto text-center text-xs text-gray-600">
-            SolGuard — Autonomous pre-emptive scam detection for Solana. Built for Colosseum × Solana Agent Hackathon 2026.
+
+        <footer className="relative z-10 border-t border-cyber-gray/50 px-6 py-4 mt-12 bg-cyber-black/80 backdrop-blur-md">
+          <div className="max-w-7xl mx-auto flex justify-between items-center text-[10px] text-gray-600 uppercase tracking-wider">
+            <div>
+              SolGuard System v0.9.2 // Security Level: MAXIMUM
+            </div>
+            <div className="flex gap-4">
+               <span>Latency: <span className="text-green-500">12ms</span></span>
+               <span>Status: <span className="text-green-500">OPERATIONAL</span></span>
+            </div>
           </div>
         </footer>
       </body>

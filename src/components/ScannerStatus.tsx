@@ -2,77 +2,68 @@
 
 import { useEffect, useState } from 'react';
 
-interface ScannerState {
+type ScannerStatusData = {
   connected: boolean;
   tokensToday: number;
   lastScan: string | null;
-}
+};
 
 export default function ScannerStatus() {
-  const [status, setStatus] = useState<ScannerState | null>(null);
+  const [status, setStatus] = useState<ScannerStatusData>({
+    connected: false,
+    tokensToday: 0,
+    lastScan: null,
+  });
 
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const res = await fetch('/api/scanner/status');
-        const data = await res.json();
-        setStatus(data);
-      } catch {
-        setStatus({ connected: false, tokensToday: 0, lastScan: null });
+        const res = await fetch('/api/status');
+        if (res.ok) {
+          const data = await res.json();
+          setStatus(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch scanner status:', err);
       }
     };
 
     fetchStatus();
-    const interval = setInterval(fetchStatus, 10000);
+    const interval = setInterval(fetchStatus, 5000); // Update status every 5s
     return () => clearInterval(interval);
   }, []);
 
-  if (!status) return null;
-
-  const lastScanText = status.lastScan
-    ? new Date(status.lastScan).toLocaleTimeString()
-    : 'Waiting...';
-
   return (
-    <div className="flex flex-wrap items-center gap-4 px-4 py-3 bg-gray-900/80 border border-gray-800 rounded-xl mb-6">
-      {/* Connection indicator */}
-      <div className="flex items-center gap-2">
-        <span className="relative flex h-3 w-3">
-          {status.connected ? (
-            <>
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
-            </>
-          ) : (
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-gray-500" />
-          )}
-        </span>
-        <span className={`text-sm font-medium ${status.connected ? 'text-green-400' : 'text-gray-500'}`}>
-          {status.connected ? 'Monitoring pump.fun' : 'Scanner offline'}
-        </span>
+    <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Connection Status */}
+      <div className="relative overflow-hidden bg-cyber-gray/80 border border-cyber-blue/30 p-4 group hover:border-cyber-blue/60 transition-colors">
+        <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-100 transition-opacity">
+          <div className="w-2 h-2 bg-cyber-blue rounded-full animate-blink"></div>
+        </div>
+        <div className="text-[10px] text-cyber-blue uppercase tracking-widest mb-1">Network Uplink</div>
+        <div className="flex items-center gap-3">
+          <div className={`w-3 h-3 rounded-sm ${status.connected ? 'bg-cyber-green shadow-[0_0_10px_#00ff88]' : 'bg-cyber-red shadow-[0_0_10px_#ff2d2d]'}`} />
+          <span className={`text-xl font-bold tracking-tight ${status.connected ? 'text-white' : 'text-cyber-red'}`}>
+            {status.connected ? 'CONNECTED' : 'OFFLINE'}
+          </span>
+        </div>
       </div>
 
-      {/* Divider */}
-      <div className="hidden sm:block w-px h-4 bg-gray-700" />
-
-      {/* Tokens scanned today */}
-      <div className="flex items-center gap-1.5 text-sm text-gray-400">
-        <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-        <span className="font-mono font-bold text-white">{status.tokensToday}</span>
-        <span>tokens scanned today</span>
+      {/* Scanned Count */}
+      <div className="relative overflow-hidden bg-cyber-gray/80 border border-cyber-blue/30 p-4 group hover:border-cyber-blue/60 transition-colors">
+        <div className="text-[10px] text-cyber-blue uppercase tracking-widest mb-1">Targets Scanned (24h)</div>
+        <div className="text-2xl font-bold text-white font-mono">
+          {status.tokensToday.toString().padStart(6, '0')}
+        </div>
+        <div className="absolute bottom-0 right-0 h-10 w-20 bg-gradient-to-t from-cyber-blue/10 to-transparent"></div>
       </div>
 
-      {/* Divider */}
-      <div className="hidden sm:block w-px h-4 bg-gray-700" />
-
-      {/* Last scan */}
-      <div className="flex items-center gap-1.5 text-sm text-gray-500">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span>Last scan: {lastScanText}</span>
+      {/* Last Update */}
+      <div className="relative overflow-hidden bg-cyber-gray/80 border border-cyber-blue/30 p-4 group hover:border-cyber-blue/60 transition-colors">
+        <div className="text-[10px] text-cyber-blue uppercase tracking-widest mb-1">Last Heartbeat</div>
+        <div className="text-lg font-mono text-gray-400">
+          {status.lastScan ? new Date(status.lastScan).toLocaleTimeString() : '--:--:--'}
+        </div>
       </div>
     </div>
   );
