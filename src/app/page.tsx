@@ -6,6 +6,7 @@ import { getDocLink } from '@/lib/doc-links';
 import ScannerStatus from '@/components/ScannerStatus';
 import RiskChart from '@/components/RiskChart';
 import MatrixLoader from '@/components/MatrixLoader';
+import SerialRuggerBoard from '@/components/SerialRuggerBoard';
 
 // --- Risk Badge Component ---
 function RiskBadge({ status, score }: { status: string; score: number }) {
@@ -513,15 +514,15 @@ export default function Dashboard() {
     <div>
       {/* Network Header with Matrix Effect */}
       <div className="mb-8 relative border-b border-cyber-blue/20 pb-6">
-        <h1 className="text-4xl font-black text-white mb-2 tracking-tighter uppercase glitch" data-text="System Monitor">
-          SYSTEM_MONITOR <span className="text-cyber-blue">::</span> LIVE_FEED
+        <h1 className="text-4xl font-black text-white mb-2 tracking-tighter uppercase">
+          Live Token <span className="text-cyber-blue">Risk Monitor</span>
         </h1>
-        <p className="text-sm text-cyber-blue/60 font-mono">
-          {'>>'} UPLINK_ESTABLISHED: MONITORING PUMPFUN_NETWORK PROTOCOLS...
+        <p className="text-sm text-gray-400">
+          Pre-emptive rug pull detection for Solana. Auto-scanning new tokens in real time.
         </p>
         {lastUpdate && (
           <div className="text-[10px] text-gray-500 mt-2 font-mono uppercase">
-            SYNC_TIMESTAMP: <span className="text-white">{lastUpdate}</span> <span className="mx-2 text-cyber-blue/30">|</span> REFRESH_RATE: 15000ms
+            Last updated: <span className="text-white">{lastUpdate}</span> <span className="mx-2 text-cyber-blue/30">|</span> Auto-refresh: 15s
           </div>
         )}
       </div>
@@ -531,6 +532,9 @@ export default function Dashboard() {
 
       {/* Search */}
       <SearchBar />
+
+      {/* Serial Rugger Leaderboard */}
+      <SerialRuggerBoard />
 
       {/* Stats + Chart */}
       {stats && (
