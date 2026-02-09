@@ -197,16 +197,30 @@ function TokenDetail({ token }: { token: Token }) {
     // Fallback if JSON is malformed
   }
 
+  const isPumpFun = token.source === 'pump.fun';
+  const killSwitchReasons = reasons.filter(r => r.startsWith('[KILL SWITCH]'));
+  const normalReasons = reasons.filter(r => !r.startsWith('[KILL SWITCH]'));
+
   const bars = [
-    { label: 'Deployer (40%)', value: breakdown.deployer ?? 50, color: 'text-gray-300' },
-    { label: 'Liquidity (25%)', value: breakdown.liquidity ?? 50, color: 'text-gray-300' },
-    { label: 'Authority (15%)', value: breakdown.authority ?? 50, color: 'text-gray-300' },
-    { label: 'Concentration (10%)', value: breakdown.concentration ?? 50, color: 'text-gray-300' },
+    { label: `Deployer (${isPumpFun ? '45' : '40'}%)`, value: breakdown.deployer ?? 50, color: 'text-gray-300' },
+    { label: `Liquidity (${isPumpFun ? '30' : '25'}%)`, value: breakdown.liquidity ?? 50, color: 'text-gray-300' },
+    { label: `Authority (${isPumpFun ? '0' : '15'}%)`, value: breakdown.authority ?? 50, color: 'text-gray-300' },
+    { label: `Concentration (${isPumpFun ? '15' : '10'}%)`, value: breakdown.concentration ?? 50, color: 'text-gray-300' },
     { label: 'Token Age (10%)', value: breakdown.age ?? 50, color: 'text-gray-300' },
   ];
 
   return (
     <div className="p-4 md:p-6 space-y-4">
+      {/* Kill Switch Flags */}
+      {killSwitchReasons.length > 0 && (
+        <div className="bg-red-950/50 border border-red-800 rounded-lg p-3">
+          <div className="text-xs font-bold text-red-400 mb-1">KILL SWITCH TRIGGERED</div>
+          {killSwitchReasons.map((r, i) => (
+            <div key={i} className="text-xs text-red-300">{r.replace('[KILL SWITCH] ', '')}</div>
+          ))}
+        </div>
+      )}
+
       {/* Risk Breakdown Bars */}
       <div>
         <div className="text-sm font-medium text-gray-300 mb-3">Risk Breakdown</div>
@@ -218,11 +232,11 @@ function TokenDetail({ token }: { token: Token }) {
       </div>
 
       {/* Risk Reasons with Doc Links */}
-      {reasons.length > 0 && (
+      {normalReasons.length > 0 && (
         <div>
           <div className="text-sm font-medium text-gray-300 mb-2">Flags</div>
           <ul className="space-y-2">
-            {reasons.map((r: string, i: number) => {
+            {normalReasons.map((r: string, i: number) => {
               const docLink = getDocLink(r);
               return (
                 <li key={i} className="text-xs text-gray-400">

@@ -11,15 +11,24 @@ export interface RiskAssessment {
     concentration: number;  // 0-100
     age: number;            // 0-100
   };
+  killSwitchFlags: string[];
 }
 
-// Weights for each factor (must sum to 1.0)
-// Aligned with AGENTS.md specification
-const WEIGHTS = {
+// Default weights (must sum to 1.0)
+const WEIGHTS_DEFAULT = {
   deployer: 0.40,
   liquidity: 0.25,
   authority: 0.15,
   concentration: 0.10,
+  age: 0.10,
+};
+
+// pump.fun tokens: authority is auto-revoked (no signal), redistribute weight
+const WEIGHTS_PUMP_FUN = {
+  deployer: 0.45,
+  liquidity: 0.30,
+  authority: 0.00,
+  concentration: 0.15,
   age: 0.10,
 };
 
@@ -34,8 +43,10 @@ export function calculateRisk(
   deployerPreviousRugs: number = 0,
   deployerTotalTokens: number = 0,
   tokenAgeSec: number = 0,
+  source: string = 'unknown',
 ): RiskAssessment {
   const reasons: string[] = [];
+  const killSwitchFlags: string[] = [];
   const breakdown = {
     deployer: 50,
     liquidity: 50,
@@ -44,10 +55,12 @@ export function calculateRisk(
     age: 50,
   };
 
-  // --- DEPLOYER SCORE (40%) ---
+  const weights = source === 'pump.fun' ? WEIGHTS_PUMP_FUN : WEIGHTS_DEFAULT;
+
+  // --- DEPLOYER SCORE (40-45%) ---
   if (deployerPreviousRugs > 0) {
-    const rugRate = deployerTotalTokens > 0 
-      ? deployerPreviousRugs / deployerTotalTokens 
+    const rugRate = deployerTotalTokens > 0
+      ? deployerPreviousRugs / deployerTotalTokens
       : 1;
     breakdown.deployer = Math.max(0, Math.round((1 - rugRate) * 100));
     reasons.push(`Deployer rugged ${deployerPreviousRugs} of ${deployerTotalTokens} previous tokens`);
@@ -59,7 +72,7 @@ export function calculateRisk(
     // Clean deployer with history = good
   }
 
-  // --- LIQUIDITY SCORE (25%) ---
+  // --- LIQUIDITY SCORE (25-30%) ---
   if (summary) {
     const lpPct = summary.lpLockedPct || 0;
     if (lpPct >= 90) {
@@ -78,40 +91,41 @@ export function calculateRisk(
     reasons.push('Could not verify LP lock status');
   }
 
-  // --- AUTHORITY SCORE (15%) ---
+  // --- AUTHORITY SCORE (15% default, 0% for pump.fun) ---
   if (report) {
     let authScore = 100;
-    
+
     if (report.token.mintAuthority !== null) {
       authScore -= 40;
       reasons.push('Mint authority is active — new tokens can be minted');
     }
-    
+
     if (report.token.freezeAuthority !== null) {
       authScore -= 30;
       reasons.push('Freeze authority is active — your tokens can be frozen');
     }
-    
+
     if (report.tokenMeta.mutable) {
       authScore -= 15;
       reasons.push('Token metadata is mutable');
     }
-    
+
     breakdown.authority = Math.max(0, authScore);
   } else {
     breakdown.authority = 30;
     reasons.push('Could not verify token authorities');
   }
 
-  // --- CONCENTRATION SCORE (15%) ---
+  // --- CONCENTRATION SCORE (10-15%) ---
   // We'll enhance this with holder data later
   // For now, use RugCheck risk signals
+  const concentrationRisks = report?.risks?.filter(r =>
+    r.name.toLowerCase().includes('holder') ||
+    r.name.toLowerCase().includes('supply') ||
+    r.name.toLowerCase().includes('single')
+  ) || [];
+
   if (report?.risks) {
-    const concentrationRisks = report.risks.filter(r => 
-      r.name.toLowerCase().includes('holder') || 
-      r.name.toLowerCase().includes('supply') ||
-      r.name.toLowerCase().includes('single')
-    );
     if (concentrationRisks.length > 0) {
       breakdown.concentration = Math.max(10, 50 - concentrationRisks.length * 15);
       concentrationRisks.forEach(r => reasons.push(r.description));
@@ -157,12 +171,12 @@ export function calculateRisk(
   }
 
   // --- FINAL WEIGHTED SCORE ---
-  const score = Math.round(
-    breakdown.deployer * WEIGHTS.deployer +
-    breakdown.liquidity * WEIGHTS.liquidity +
-    breakdown.authority * WEIGHTS.authority +
-    breakdown.concentration * WEIGHTS.concentration +
-    breakdown.age * WEIGHTS.age
+  let score = Math.round(
+    breakdown.deployer * weights.deployer +
+    breakdown.liquidity * weights.liquidity +
+    breakdown.authority * weights.authority +
+    breakdown.concentration * weights.concentration +
+    breakdown.age * weights.age
   );
 
   // Determine status
@@ -186,10 +200,34 @@ export function calculateRisk(
     status = 'YELLOW';
   }
 
+  // --- KILL SWITCH FLAGS ---
+  // Hard overrides that force RED regardless of composite score
+
+  if (deployerPreviousRugs >= 2) {
+    killSwitchFlags.push('DEPLOYER_SERIAL_RUGGER');
+    reasons.push(`[KILL SWITCH] Serial rugger: deployer has ${deployerPreviousRugs} previous rugs`);
+  }
+
+  if (summary && (summary.lpLockedPct || 0) < 5) {
+    killSwitchFlags.push('LP_UNLOCKED');
+    reasons.push(`[KILL SWITCH] LP unlocked: only ${(summary.lpLockedPct || 0).toFixed(1)}% of liquidity is locked`);
+  }
+
+  if (concentrationRisks.length >= 3) {
+    killSwitchFlags.push('CONCENTRATION_EXTREME');
+    reasons.push(`[KILL SWITCH] Extreme concentration: ${concentrationRisks.length} holder/supply risk signals`);
+  }
+
+  if (killSwitchFlags.length > 0) {
+    status = 'RED';
+    score = Math.min(score, 25);
+  }
+
   return {
     score: Math.max(0, Math.min(100, score)),
     status,
     reasons: [...new Set(reasons)], // deduplicate
     breakdown,
+    killSwitchFlags,
   };
 }

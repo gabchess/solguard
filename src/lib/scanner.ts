@@ -102,7 +102,7 @@ export async function scanToken(mint: string): Promise<{
     }
 
     // Run risk engine with real deployer data
-    const risk = calculateRisk(report, summary, deployerPreviousRugs, deployerTotalTokens, tokenAgeSec);
+    const risk = calculateRisk(report, summary, deployerPreviousRugs, deployerTotalTokens, tokenAgeSec, 'pump.fun');
 
     // Extract token info
     const name = report?.fileMeta?.name || report?.tokenMeta?.name || 'Unknown';
