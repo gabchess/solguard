@@ -5,8 +5,19 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SolGuard — Pre-Emptive Scam Detection for Solana",
-  description: "Real-time rug pull detection. Live risk scores. Protecting Solana traders before they buy.",
+  title: "SolGuard — Autonomous Pre-Emptive Scam Detection for Solana",
+  description: "Real-time rug pull detection agent for Solana. Monitors pump.fun, scores risk with 5-factor analysis, and alerts before you get rugged.",
+  openGraph: {
+    title: "SolGuard — Pre-Emptive Scam Detection for Solana",
+    description: "Autonomous agent that monitors pump.fun in real-time, scores rug pull risk, and warns before you buy. Built for the Colosseum Solana Agent Hackathon.",
+    siteName: "SolGuard",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SolGuard — Pre-Emptive Scam Detection for Solana",
+    description: "Autonomous agent that monitors pump.fun in real-time, scores rug pull risk, and warns before you buy.",
+  },
 };
 
 export default function RootLayout({
@@ -36,7 +47,7 @@ export default function RootLayout({
         </main>
         <footer className="border-t border-gray-800 px-6 py-4 mt-12">
           <div className="max-w-7xl mx-auto text-center text-xs text-gray-600">
-            SolGuard — Autonomous pre-emptive scam detection for Solana. Built by Aria Linkwell.
+            SolGuard — Autonomous pre-emptive scam detection for Solana. Built for Colosseum × Solana Agent Hackathon 2026.
           </div>
         </footer>
       </body>

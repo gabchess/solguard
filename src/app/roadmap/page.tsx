@@ -1,18 +1,20 @@
 export default function Roadmap() {
   const shipped = [
     { name: 'Live Token Dashboard', desc: 'Real-time feed of Solana tokens with risk scores', status: 'shipped' },
-    { name: 'Risk Scoring Engine', desc: 'Weighted analysis: deployer history, LP, authorities, concentration', status: 'shipped' },
+    { name: 'Risk Scoring Engine', desc: 'Weighted analysis: deployer history, LP, authorities, concentration, token age', status: 'shipped' },
     { name: 'RugCheck Integration', desc: 'Pull risk data from RugCheck API for every token', status: 'shipped' },
     { name: 'Color-Coded Risk Badges', desc: 'RED / YELLOW / GREEN instant visual risk assessment', status: 'shipped' },
-    { name: 'Manual Token Scanner', desc: 'Paste any Solana token address to get instant risk analysis', status: 'shipped' },
-    { name: 'Solana Docs Integration', desc: 'Learn More links to official Solana docs explaining each risk', status: 'shipped' },
+    { name: 'WOW1: Scan Any Token', desc: 'Paste any Solana token mint address and get an instant risk breakdown', status: 'shipped' },
+    { name: 'WOW2: Risk Distribution Chart', desc: 'Donut chart showing RED/YELLOW/GREEN distribution across all tracked tokens', status: 'shipped' },
+    { name: 'WOW3: Serial Rugger Profiles', desc: 'Deployer wallet investigation pages with history, badges, and full token timeline', status: 'shipped' },
+    { name: 'WOW5: Live Auto-Scan Mode', desc: 'Real-time pump.fun WebSocket scanner with live dashboard status and green-flash alerts', status: 'shipped' },
+    { name: 'Autonomous X Alerts', desc: 'Post critical risk warnings to X/Twitter automatically when RED tokens are detected', status: 'shipped' },
+    { name: 'Solana Docs Integration', desc: 'Learn More links to official Solana docs explaining each risk flag', status: 'shipped' },
   ];
 
   const building = [
-    { name: 'Auto-Scanning (Coming Soon)', desc: 'Automatic detection of new pump.fun tokens without manual input', status: 'building' },
-    { name: 'pump.fun Real-Time Scanner', desc: 'WebSocket listener for new token launches — instant detection', status: 'building' },
-    { name: 'Autonomous X Alerts', desc: 'Post critical risk warnings to X/Twitter automatically', status: 'building' },
-    { name: 'Wallet Graph (2-hop)', desc: 'Trace deployer funding to link new wallets to known ruggers', status: 'building' },
+    { name: 'Wallet Fund-Flow Graph', desc: 'Visualize where deployer funds came from and where rug proceeds went', status: 'building' },
+    { name: 'Telegram/Discord Alerts', desc: 'Push RED alerts to Telegram and Discord for instant notifications', status: 'building' },
   ];
 
   const planned = [

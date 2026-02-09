@@ -480,7 +480,7 @@ export default function Dashboard() {
           Live Token Risk Monitor
         </h1>
         <p className="text-sm text-gray-400">
-          Pre-emptive rug pull detection for Solana. Auto-scanning pump.fun in real-time with instant risk scores.
+          Autonomous pre-emptive scam detection for Solana. Monitoring pump.fun in real-time.
         </p>
         {lastUpdate && (
           <p className="text-xs text-gray-600 mt-2">Last updated: {lastUpdate} · Auto-refreshes every 15s</p>
@@ -521,6 +521,30 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* How It Works */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 text-center">
+          <div className="text-2xl mb-2">📡</div>
+          <div className="text-sm font-medium text-white mb-1">Monitor</div>
+          <div className="text-xs text-gray-500">pump.fun WebSocket feed scanned in real-time</div>
+        </div>
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 text-center">
+          <div className="text-2xl mb-2">🧠</div>
+          <div className="text-sm font-medium text-white mb-1">Analyze</div>
+          <div className="text-xs text-gray-500">5-factor risk scoring via RugCheck + Helius</div>
+        </div>
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 text-center">
+          <div className="text-2xl mb-2">🚨</div>
+          <div className="text-sm font-medium text-white mb-1">Alert</div>
+          <div className="text-xs text-gray-500">Live dashboard updates + autonomous X posts</div>
+        </div>
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 text-center">
+          <div className="text-2xl mb-2">🔍</div>
+          <div className="text-sm font-medium text-white mb-1">Investigate</div>
+          <div className="text-xs text-gray-500">Deployer profiles expose serial ruggers</div>
+        </div>
+      </div>
 
       {/* Filters */}
       <FilterBar
