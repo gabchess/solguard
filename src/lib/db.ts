@@ -208,7 +208,7 @@ export async function getSerialRuggers(limit: number = 10) {
     FROM tokens 
     WHERE deployer != 'unknown'
     GROUP BY deployer 
-    HAVING COUNT(*) >= 2
+    HAVING COUNT(*) >= 1
     ORDER BY red_count DESC, avg_score ASC
     LIMIT ?`,
     args: [limit],
