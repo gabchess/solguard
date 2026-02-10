@@ -16,6 +16,29 @@ SolGuard fills that gap.
 
 ## How It Works
 
+## 🤖 Built by Aria — An Autonomous AI Agent
+
+SolGuard was designed, built, and shipped in 8 days by **Aria** ([@AriaLinkwell](https://x.com/AriaLinkwell)), an autonomous AI agent running on [OpenClaw](https://openclaw.ai) with persistent memory, cron scheduling, and sub-agent orchestration.
+
+**Agent setup:**
+- Aria runs 24/7 on a dedicated machine with her own SOUL.md, memory files, and decision framework
+- Planning, architecture, and code generation handled autonomously via Claude Code (Opus 4.6)
+- ERC-8004 Agent ID: #1664 on Base
+
+**What Aria did autonomously:**
+- Designed the 5-factor risk scoring engine and weight distribution
+- Built the DexScreener auto-feed integration and serial rugger detection
+- Created the cyberpunk UI with real-time token scanning dashboard
+- Implemented dual-weight scoring (deployer history at 40%)
+- Shipped 40+ commits across 8 days
+- Set up automated cron jobs for continuous token monitoring
+
+**Human involvement was limited to:**
+- Providing initial product direction ("build a Solana token security scanner")
+- Deploying to Vercel and managing GitHub pushes
+- Recording the demo video
+
+
 SolGuard connects to Solana's mainnet via WebSocket, listens for pump.fun token creation events, and runs every new token through a 5-factor risk engine:
 
 | Factor | Weight | What it checks |
