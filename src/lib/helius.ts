@@ -4,6 +4,100 @@ import axios from 'axios';
 const BASE_URL = 'https://api.helius.xyz';
 const API_KEY = process.env.HELIUS_API_KEY || '';
 
+// --- Wallet API v1 (NEW) ---
+
+export interface WalletBalance {
+  mint: string;
+  amount: number;
+  decimals: number;
+  name?: string;
+  symbol?: string;
+  logoURI?: string;
+  usdValue?: number;
+}
+
+export interface WalletTransfer {
+  signature: string;
+  timestamp: number;
+  from: string;
+  to: string;
+  amount: number;
+  mint?: string;
+  type: string;
+}
+
+export interface WalletFunding {
+  fundingSource: string;
+  fundingSourceType: string; // 'exchange' | 'protocol' | 'unknown' etc
+  amount: number;
+  timestamp: number;
+  signature: string;
+}
+
+/**
+ * Get all token balances for a wallet in ONE call (Wallet API v1).
+ * Replaces multiple getAssetsByOwner calls.
+ */
+export async function getWalletBalances(address: string): Promise<WalletBalance[]> {
+  try {
+    const { data } = await axios.get(
+      `${BASE_URL}/v1/wallet/${address}/balances`,
+      {
+        params: { 'api-key': API_KEY },
+        timeout: 15000,
+      },
+    );
+    return data?.tokens ?? [];
+  } catch (err: unknown) {
+    const error = err as { response?: { status: number } };
+    console.error(`Helius wallet balances error for ${address}:`, error.response?.status || err);
+    return [];
+  }
+}
+
+/**
+ * Get complete transfer history for a wallet (Wallet API v1).
+ * Includes counterparty info for each transfer.
+ */
+export async function getWalletTransfers(address: string, limit = 100): Promise<WalletTransfer[]> {
+  try {
+    const { data } = await axios.get(
+      `${BASE_URL}/v1/wallet/${address}/transfers`,
+      {
+        params: { 'api-key': API_KEY, limit },
+        timeout: 15000,
+      },
+    );
+    return data?.transfers ?? [];
+  } catch (err: unknown) {
+    const error = err as { response?: { status: number } };
+    console.error(`Helius wallet transfers error for ${address}:`, error.response?.status || err);
+    return [];
+  }
+}
+
+/**
+ * Get the original funding source for a wallet (Wallet API v1).
+ * Critical for rug detection: identifies if wallet was funded by
+ * an exchange, another rugger wallet, mixer, etc.
+ */
+export async function getWalletFunding(address: string): Promise<WalletFunding | null> {
+  try {
+    const { data } = await axios.get(
+      `${BASE_URL}/v1/wallet/${address}/funding`,
+      {
+        params: { 'api-key': API_KEY },
+        timeout: 15000,
+      },
+    );
+    return data ?? null;
+  } catch (err: unknown) {
+    const error = err as { response?: { status: number } };
+    console.error(`Helius wallet funding error for ${address}:`, error.response?.status || err);
+    return null;
+  }
+}
+
 // --- Enhanced Transactions API types ---
 
 export type HeliusTransactionType =

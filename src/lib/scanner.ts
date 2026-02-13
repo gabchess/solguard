@@ -3,7 +3,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { getTokenSummary, getTokenReport } from './rugcheck';
 import { calculateRisk } from './risk-engine';
 import { insertToken, insertScan, getTokenByMint, executeQuery } from './db';
-import { getDeployerHistory } from './helius';
+import { getDeployerHistory, getWalletFunding } from './helius';
 
 const PUMP_FUN_PROGRAM = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P';
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY || '';
@@ -101,8 +101,21 @@ export async function scanToken(mint: string): Promise<{
       }
     }
 
-    // Run risk engine with real deployer data
-    const risk = calculateRisk(report, summary, deployerPreviousRugs, deployerTotalTokens, tokenAgeSec, 'pump.fun');
+    // Get funding source for deployer wallet (Helius Wallet API v1)
+    let fundingData = null;
+    if (deployer !== 'unknown') {
+      try {
+        fundingData = await getWalletFunding(deployer);
+        if (fundingData) {
+          console.log(`[SCANNER] Deployer funded by: ${fundingData.fundingSourceType} (${fundingData.fundingSource.slice(0, 8)}...)`);
+        }
+      } catch (err) {
+        console.error(`[SCANNER] Funding analysis error:`, err);
+      }
+    }
+
+    // Run risk engine with real deployer data + funding analysis
+    const risk = calculateRisk(report, summary, deployerPreviousRugs, deployerTotalTokens, tokenAgeSec, 'pump.fun', fundingData);
 
     // Extract token info
     const name = report?.fileMeta?.name || report?.tokenMeta?.name || 'Unknown';

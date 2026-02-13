@@ -1,4 +1,5 @@
 import { RugCheckReport, RugCheckSummary } from './rugcheck';
+import { WalletFunding } from './helius';
 
 export interface RiskAssessment {
   score: number;           // 0-100 (0 = extremely dangerous, 100 = safe)
@@ -12,6 +13,11 @@ export interface RiskAssessment {
     age: number;            // 0-100
   };
   killSwitchFlags: string[];
+  fundingSource?: {
+    address: string;
+    type: string;
+    amount: number;
+  };
 }
 
 // Default weights (must sum to 1.0)
@@ -44,6 +50,7 @@ export function calculateRisk(
   deployerTotalTokens: number = 0,
   tokenAgeSec: number = 0,
   source: string = 'unknown',
+  fundingData: WalletFunding | null = null,
 ): RiskAssessment {
   const reasons: string[] = [];
   const killSwitchFlags: string[] = [];
@@ -200,6 +207,31 @@ export function calculateRisk(
     status = 'YELLOW';
   }
 
+  // --- FUNDING SOURCE ANALYSIS (bonus/penalty on deployer score) ---
+  let fundingSource: RiskAssessment['fundingSource'] = undefined;
+  if (fundingData) {
+    fundingSource = {
+      address: fundingData.fundingSource,
+      type: fundingData.fundingSourceType,
+      amount: fundingData.amount,
+    };
+
+    const srcType = (fundingData.fundingSourceType || '').toLowerCase();
+    if (srcType === 'exchange') {
+      // Funded from exchange = slightly better (KYC'd source)
+      breakdown.deployer = Math.min(100, breakdown.deployer + 10);
+      reasons.push(`Deployer funded from exchange (${fundingData.fundingSource.slice(0, 8)}...)`);
+    } else if (srcType === 'mixer' || srcType === 'tornado') {
+      // Funded from mixer = very suspicious
+      breakdown.deployer = Math.max(0, breakdown.deployer - 30);
+      reasons.push(`[WARNING] Deployer funded through mixer/privacy tool`);
+    } else if (srcType === 'unknown' && fundingData.amount < 0.1) {
+      // Tiny funding from unknown = fresh wallet, suspicious
+      breakdown.deployer = Math.max(0, breakdown.deployer - 10);
+      reasons.push(`Deployer funded with tiny amount (${fundingData.amount.toFixed(4)} SOL) from unknown source`);
+    }
+  }
+
   // --- KILL SWITCH FLAGS ---
   // Hard overrides that force RED regardless of composite score
 
@@ -229,5 +261,6 @@ export function calculateRisk(
     reasons: [...new Set(reasons)], // deduplicate
     breakdown,
     killSwitchFlags,
+    fundingSource,
   };
 }
